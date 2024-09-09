@@ -12,7 +12,7 @@ fn main() {
         if input.is_empty() {
             return;
         }
-        if input.contains(&pattern) {
+        if input.contains(pattern) {
             print!("{input}");
         }
     }
