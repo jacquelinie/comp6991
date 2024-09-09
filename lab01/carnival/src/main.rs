@@ -1,4 +1,4 @@
-// You should NOT be constructing 
+// You should NOT be constructing
 // a new ticket, so you should never use this directly.
 #[derive(Debug)]
 struct Ticket;
@@ -9,7 +9,7 @@ struct Person {
 }
 
 fn main() {
-    let entry_pass = Ticket; 
+    let entry_pass = Ticket;
     let shrey_name = String::from("shrey");
     let tom_name = String::from("tom");
 
@@ -45,5 +45,7 @@ fn move_ticket(mut from: Person, mut to: Person) -> (Person, Person) {
     // the ticket should be moved to the "from" person
     // to the 'to' person
     // for now, return the people UNCHANGED
+    to.ticket = from.ticket;
+    from.ticket = None;
     (from, to)
 }
