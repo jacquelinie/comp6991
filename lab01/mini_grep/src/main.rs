@@ -6,5 +6,15 @@ fn main() {
     let pattern = &pattern_string;
 
     // TODO: Replace the following with your code:
-    println!("The command-line argument is: {pattern}");
+    loop {
+        let mut input = String::new();
+        let _ = std::io::stdin().read_line(&mut input);
+        if input.is_empty() {
+            return;
+        }
+        if input.contains(&pattern) {
+            print!("{input}");
+        }
+    }
+
 }
