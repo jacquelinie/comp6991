@@ -1,9 +1,9 @@
 fn main() {
-    println!("What is your name? ");
+    print!("What is your name? ");
 
     // allocate some absurd amount of memory
     let mut name = String::new();
-    let name = std::io::stdin().read_line(&mut name);
+    let _ = std::io::stdin().read_line(&mut name);
 
     // trim the newline
     let name = name.trim();

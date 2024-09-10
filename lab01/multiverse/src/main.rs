@@ -1,28 +1,27 @@
 // hmm this doesn't look right!!
-struct universe_details {
+struct UniverseDetails {
     universe_name: String,
     universe_winner: String,
-    universe_population: int
+    universe_population: u32
 }
 
-fn get_universe_details(universe_id: u32) -> Option<universe_details> {
+fn get_universe_details(universe_id: u32) -> Option<UniverseDetails> {
     // does this even compile??
-    struct universe_details;
     if universe_id % 3 == 0 && universe_id % 5 == 0 {
-        return Some(universe_details {
-            universe_name: "Stardew Valley",
+        return Some(UniverseDetails {
+            universe_name: "Stardew Valley".to_string(),
             universe_winner: "Jojo Corp".to_string(),
             universe_population: 1,
         })
     } else if universe_id % 5 == 0 {
-        return Some(universe_details {
-            universe_name: "Miraculous",
+        return Some(UniverseDetails {
+            universe_name: "Miraculous".to_string(),
             universe_winner: "Hawk Moth".to_string(),
             universe_population: 22,
         })
     } else if universe_id % 3 == 0 {
-        return Some(universe_details {
-            universe_name: "Star Wars",
+        return Some(UniverseDetails {
+            universe_name: "Star Wars".to_string(),
             universe_winner: "The Rebellion".to_string(),
             universe_population: u32::MAX,
         })

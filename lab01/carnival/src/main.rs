@@ -14,20 +14,17 @@ fn main() {
     let tom_name = String::from("tom");
 
     // Only change code past this line!
-    let shrey_upper_name = to_uppercase(shrey_name);
-    let tom_upper_name = to_uppercase(tom_name);
-
-    let shrey = Person {
-        name: shrey_name,
+    let mut shrey = Person {
+        name: to_uppercase(shrey_name),
         ticket: Some(entry_pass),
     };
 
-    let tom = Person {
-        name: tom_name,
+    let mut tom = Person {
+        name: to_uppercase(tom_name),
         ticket: None,
     };
 
-    move_ticket(shrey, tom);
+    (shrey, tom) = move_ticket(shrey, tom);
 
     // do not change these lines
     println!("{} ticket: {:?}", shrey.name, shrey.ticket);
