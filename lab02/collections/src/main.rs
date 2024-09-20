@@ -33,54 +33,32 @@ fn main() {
 
 
     /* Questions
-    Which collection type was the fastest for adding and removing elements?
-    - VecDeque's adding is the fastest and Vector's removing is the fastest.
+    - Which collection type was the fastest for adding and removing elements?
+    VecDeque's adding is the fastest and Vector's removing is the fastest.
 
-    Why do you think this was the case?
-    VecDeque's adding is the fastest because Its internal implementation uses
-    a ring buffer data structure. This means that when adding elements,
-    VecDeque can use the existing memory space without the need for
-    frequent memory allocation and copy operations.
-    Vector's removing is the fastest because it is when an element is removed
-    from Vector, Vector can close the hole by moving the element out of memory.
-    In addition, since Vector storage elements are contiguous, the CPU
-    optimizer can combine multiple contiguous memory accesses into one
-    contiguous memory block access, thus reducing the number of memory accesses.
+    - Why do you think this was the case?
+    VecDeque's adding is fastest because of it uses a ring buffer data structure. This means that when adding elements,
+    VecDeque can use existing memory space and there is no need for frequent memory allocation and copy operations unlike the other data structures.
+    Vector's removing is the fastest because when an element is removed from Vector, it fills the void by moving the element out of memory.
 
-    Is there any significant difference between Vec and VecDeque deletion?
-    Yes there is, Vec being 3.78s while VecDeque being 9.93s.
+    - Is there any significant difference between Vec and VecDeque deletion?
+    Yes there is, Vector being 3.78s while VecDeque being 9.93s.
 
-    If so, why? If not, why not?
-    - In theory, deleting elements in a Vector requires moving the remaining elements,
-        which results in a worst-case time complexity of O(n), although in practice
-        the CPU cache is used to reduce the number of memory accesses and thus
-        improve efficiency.
-    - When deleting elements at one end of a VecDeque, the VecDeque can directly
-        mark the first position of the array as empty without moving the elements.
-        The time complexity of these operations is O(1)
+    - If so, why? If not, why not?
+    When a Vector deletes elements, it uses the CPU cache to reduce the number of memory accesses and thus improves efficiency.
 
-    When would you consider using VecDeque over Vec?
-    - VecDeque uses a ring buffer to store data. Thus, when it reaches its capacity,
-    it can easily continue to grow without reallocating the entire array
-    - So I would use it in situations where I need to add or remove elements from
-    both ends of the array frequently.
+    - When would you consider using VecDeque over Vec?
+    Since VecDeque uses a ring buffer to store data, it would be suitable for situations
+    where the operation of adding and removing from the front or the end is done often.
 
-    When would you consider using LinkedList over Vec?
-    - It may be when the length of the sequence is large and then I don't need to
-    do random access. Insert or delete elements frequently in the middle of the
-    sequence. I would choose LinkedList.
-    - Because it can do dynamic memory allocation at runtime. Unlike Vec which
-    will require frequent copying to larger memory blocks as the data grows.
+    - When would you consider using LinkedList over Vec?
+    Since LinkedList uses dynamic memory allocation, it would be suitable for situations where
+    inserting or deleting elements from the middle of the list is done often.
 
-    // Did the results suprise you? Why or why not?.
-    - I was surprised by the speed of insertion and removal of HashMap.
-    Because theoretically both operations should be O(1).
-    - After researching, I found out that it is because hash tables need to
-    maintain data structures such as hash buckets and hash chains, and also
-    need to resolve potential hash table conflicts. That's why it's slower
-    than other data structures.
-    - However, I believe HashMap is still the best choice when you need to
-    iently perform lookup and update operations on key-value pairs.
+    - Did the results suprise you? Why or why not?.
+    I was surprised by the speed of insertion and removal of HashMap. Since in other languages it would be one of the fastest and
+    theoretically should have the lowest time complexity for its operations. However in Rust, HashMaps use hash buckets and chains
+    which makes it slower than other data structures.
     */
 
 }
