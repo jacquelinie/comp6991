@@ -29,12 +29,15 @@ fn compute_tribonacci(
     let mut tribonacci = vec![1_u128; 3];
     let size = size.map_err(|_| TribonacciError(error_msg))?;
 
+    // Comput tribonacci
     for i in 3..size {
         tribonacci.push(tribonacci[i - 1] + tribonacci[i - 2] + tribonacci[i - 3]);
     }
 
+    // Print values
     println!("Values: {:?}", tribonacci);
 
+    // Print Sum
     let value: u128 = tribonacci.into_iter().sum();
     println!("\nSum: {}", value);
     Ok(())
