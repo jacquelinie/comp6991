@@ -10,7 +10,7 @@ pub struct Difference<'first, 'second> {
 
 // You will need to add lifetimes
 // to the function and the parameters
-pub fn find_difference <'first, 'second> (sentence1: &'first str, sentence2: &'second str) -> Difference {
+pub fn find_difference <'first, 'second> (sentence1: &'first str, sentence2: &'second str) -> Difference<'first, 'second> {
 
     // DO NOT MODIFY BELOW THIS LINE 
 
