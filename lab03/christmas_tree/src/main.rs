@@ -10,7 +10,7 @@ enum Instruction {
     Reset,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Light {
     // TODO: change me!
     left: Option<Box<Light>>,
@@ -53,25 +53,26 @@ fn get_tree_count(light: &Light) -> i32 {
 }
 
 fn main() {
-    let instructions = get_instructions_from_stdin();
-    let light = Light { left: (), right: (), brightness: 0};
-    println!("{instructions:?}");
-    println!("{light:?}");
+    let mut instructions = get_instructions_from_stdin();
+    let mut light = Light { left: None, right: None, brightness: 0};
+    // println!("{instructions:?}");
+    // println!("{light:?}");
     // TODO: your implementation here
-    let mut current = &mut light;
+    let mut curr = &mut light;
     loop {
         match instructions.pop_front() {
-            Some(Instruction::Set(x)) => current.brightness = x,
-            Some(Instruction::Left) => current = current.left.get_or_insert_with(Default::default),
+            Some(Instruction::Set(x)) => curr.brightness = x,
+            Some(Instruction::Left) => curr = curr.left.get_or_insert_with(Default::default),
             Some(Instruction::Right) => {
-                current = current.right.get_or_insert_with(Default::default)
+                curr = curr.right.get_or_insert_with(Default::default)
             }
-            Some(Instruction::Reset) => current = &mut light,
+            Some(Instruction::Reset) => curr = &mut light,
             None => break,
         }
     }
 
-    let (sum, count) = tree_sum_and_count(&light);
+    let sum = get_tree_sum(&light);
+    let count = get_tree_count(&light);
     let avg = sum / count;
     println!("{avg}");
 }
