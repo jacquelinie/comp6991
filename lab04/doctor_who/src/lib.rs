@@ -1,74 +1,28 @@
-// const DEFAULT_SHIFT: i32 = 5;
-// const UPPERCASE_A: i32 = 65; // A
-// const LOWERCASE_A: i32 = 97; // a
-// const ALPHABET_SIZE: i32 = 26;
-
-// fn caesar_shift(shift_by: Option<i32>, lines: Vec<String>) -> Vec<String> {
-//     let shift_number = shift_by.unwrap_or(DEFAULT_SHIFT);
-
-//     // no idea what this is doing? Ask the forums and/or
-//     // look back at the functional programming lectures!
-//     lines.into_iter().for_each(|line| {
-//         println!(
-//             "Shifted ascii by {shift_number} is: {}",
-//             shift(shift_number, line)
-//         );
-//     });
-// }
-
-// fn shift(shift_by: i32, line: String) -> String {
-//     let mut result: Vec<char> = Vec::new();
-
-//     // turn shift_by into a positive number between 0 and 25
-//     let shift_by = shift_by % ALPHABET_SIZE + ALPHABET_SIZE;
-
-//     line.chars().for_each(|c| {
-//         let ascii = c as i32;
-
-//         if ('A'..='Z').contains(&c) {
-//             result.push(to_ascii(
-//                 abs_modulo((ascii - UPPERCASE_A) + shift_by, ALPHABET_SIZE) + UPPERCASE_A,
-//             ));
-//         } else if ('a'..='z').contains(&c) {
-//             result.push(to_ascii(
-//                 abs_modulo((ascii - LOWERCASE_A) + shift_by, ALPHABET_SIZE) + LOWERCASE_A,
-//             ));
-//         } else {
-//             result.push(c)
-//         }
-//     });
-
-//     result.iter().collect()
-// }
-
-// fn abs_modulo(a: i32, b: i32) -> i32 {
-//     (a % b).abs()
-// }
-
-// fn to_ascii(i: i32) -> char {
-//     char::from_u32(i as u32).unwrap()
-// }
-
 //! doctor_who
-//! Crate used to perform caesar shifts
+//! Crate that caesar shifts a string
 
-/// Default shift if no other shift specified
+// Default shift when no shift is given
 const DEFAULT_SHIFT: i32 = 5;
-
-/// numeric ASCII value for 'A'
+// Value for 'A'
 const UPPERCASE_A: i32 = 65;
-/// numeric ASCII value for 'a'
+// Value for 'a'
 const LOWERCASE_A: i32 = 97;
-/// numeber of letters in the alphabet
+// Value for size of the alphabet
 const ALPHABET_SIZE: i32 = 26;
 
-/// Shift each letter in vec of lines, by shift amount
+/// Shift string by shift number
 /// # Arguments
-/// * `shift_by` - The amount to shift each letter by. If None, use DEFAULT_SHIFT.
-/// * `lines` - Vec of lines to apply the function on,
-///
+/// * `shift_by` - Number shifted by each letter
+/// * `lines` - Vector of Strings to be shifted
+/// Doc Test:
 /// ```
-/// // YOUR TESTS HERE
+/// // use doctor_who::caesar_shift;
+///
+/// // let input = vec![String::from("Hello"), String::from("World!")];
+/// // output = caesar_shift(None, input);
+///
+/// // assert_eq!(output, "Shifted ascii by 5 is: Mjqqt");
+/// // assert_eq!(output, "Shifted ascii by 5 is: Btwqi!");
 /// ```
 pub fn caesar_shift(shift_by: Option<i32>, lines: Vec<String>) {
     let shift_number = shift_by.unwrap_or(DEFAULT_SHIFT);
@@ -80,6 +34,11 @@ pub fn caesar_shift(shift_by: Option<i32>, lines: Vec<String>) {
     });
 }
 
+
+/// Shift string by a number
+/// # Arguments
+/// * `shift_by` - Number to shift the line by
+/// * `line` - String that gets shifted
 fn shift(shift_by: i32, line: String) -> String {
     let mut result: Vec<char> = Vec::new();
 
@@ -105,10 +64,19 @@ fn shift(shift_by: i32, line: String) -> String {
     result.iter().collect()
 }
 
+
+/// Modulo operation
+/// # Arguments
+/// * `a` - Number which is the dividend
+/// * `b` - Number which is the divisor
 fn abs_modulo(a: i32, b: i32) -> i32 {
     (a % b).abs()
 }
 
+
+/// Change number to ascii character
+/// # Arguments
+/// * `i` - Number
 fn to_ascii(i: i32) -> char {
     char::from_u32(i as u32).unwrap()
 }

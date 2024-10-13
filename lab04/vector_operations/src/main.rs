@@ -69,7 +69,7 @@ impl std::ops::Div for Vec3 {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self {
-        if (other.x == 0.0) || (other.y == 0.0) || (other.z == 0.0) {
+        if (rhs.x == 0.0) || (rhs.y == 0.0) || (rhs.z == 0.0) {
             panic!("Cannot divide by zero.");
         }
         Self {
