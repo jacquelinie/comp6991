@@ -1,17 +1,19 @@
 const DEFAULT_SHIFT: i32 = 5;
-const UPPERCASE_A: i32 = 65;
-const LOWERCASE_A: i32 = 97;
+const UPPERCASE_A: i32 = 65; // A
+const LOWERCASE_A: i32 = 97; // a
 const ALPHABET_SIZE: i32 = 26;
 
 fn caesar_shift(shift_by: Option<i32>, lines: Vec<String>) -> Vec<String> {
     let shift_number = shift_by.unwrap_or(DEFAULT_SHIFT);
-    
-    // no idea what this is doing? Ask the forums and/or 
+
+    // no idea what this is doing? Ask the forums and/or
     // look back at the functional programming lectures!
-    lines
-        .iter()
-        .map(|line| shift(shift_number, line.to_string()))
-        .collect()
+    lines.into_iter().for_each(|line| {
+        println!(
+            "Shifted ascii by {shift_number} is: {}",
+            shift(shift_number, line)
+        );
+    });
 }
 
 fn shift(shift_by: i32, line: String) -> String {

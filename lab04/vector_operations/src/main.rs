@@ -38,6 +38,48 @@ impl std::ops::Add for Vec3 {
 //  - Implement the `Mul` behaviour for `Vec3`
 //  - Implement the `Div` behaviour for `Vec3`
 
+// define what the Subtraction operator does for Vec3
+impl std::ops::Sub for Vec3 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
+    }
+}
+
+// define what the Multiplication operator does for Vec3
+impl std::ops::Mul for Vec3 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self {
+        Self {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
+        }
+    }
+}
+
+// define what the Division operator does for Vec3
+impl std::ops::Div for Vec3 {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self {
+        if (other.x == 0.0) || (other.y == 0.0) || (other.z == 0.0) {
+            panic!("Cannot divide by zero.");
+        }
+        Self {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z,
+        }
+    }
+}
+
 fn main() {
     let v1 = Vec3::new(1.0, 2.0, 3.0);
     let v2 = Vec3::new(4.0, 5.0, 6.0);
