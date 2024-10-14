@@ -1,5 +1,7 @@
 use clap::Parser;
 use unsvg::Image;
+mod turtle;
+use turtle::{Turtle, execute_command};
 
 /// A simple program to parse four arguments using clap.
 #[derive(Parser)]
@@ -26,7 +28,19 @@ fn main() -> Result<(), ()> {
     let height = args.height;
     let width = args.width;
 
-    let image = Image::new(width, height);
+    let mut image = Image::new(width, height);
+    let mut turtle = Turtle::new(width, height);
+
+    // ========= TASK 1 =========
+    // Parse File
+    let file_content = std::fs::read_to_string(file_path).map_err(|_| eprintln!("File not found: {}", file_path))?;
+    for line in file_content.lines(){
+        if let Err(e) = execute_command(&mut turtle, &mut image, line) {
+            eprintln!("Error with command: {}", e);
+            return Err(());
+        }
+    }
+
     match image_path.extension().and_then(|s| s.to_str()) {
         Some("svg") => {
             let res = image.save_svg(&image_path);
