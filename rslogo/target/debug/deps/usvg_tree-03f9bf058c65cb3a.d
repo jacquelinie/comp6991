@@ -1,0 +1,10 @@
+/import/glass/3/z5360310/comp6991/rslogo/target/debug/deps/libusvg_tree-03f9bf058c65cb3a.rmeta: /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/lib.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/filter.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/geom.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/text.rs
+
+/import/glass/3/z5360310/comp6991/rslogo/target/debug/deps/libusvg_tree-03f9bf058c65cb3a.rlib: /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/lib.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/filter.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/geom.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/text.rs
+
+/import/glass/3/z5360310/comp6991/rslogo/target/debug/deps/usvg_tree-03f9bf058c65cb3a.d: /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/lib.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/filter.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/geom.rs /import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/text.rs
+
+/import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/lib.rs:
+/import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/filter.rs:
+/import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/geom.rs:
+/import/glass/3/z5360310/.cargo/registry/src/index.crates.io-6f17d22bba15001f/usvg-tree-0.35.0/src/text.rs:
