@@ -33,7 +33,7 @@ fn main() -> Result<(), ()> {
 
     // ========= TASK 1 =========
     // Parse File
-    let file_content = std::fs::read_to_string(file_path).map_err(|_| eprintln!("File not found: {}", file_path))?;
+    let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
     for line in file_content.lines(){
         if let Err(e) = execute_command(&mut turtle, &mut image, line) {
             eprintln!("Error with command: {}", e);

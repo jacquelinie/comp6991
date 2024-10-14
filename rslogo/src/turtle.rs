@@ -20,35 +20,42 @@ impl Turtle {
     }
 
     pub fn pen_up(&mut self) {
+        println!("Pen up");
         self.pen_down = false;
     }
 
     pub fn pen_down(&mut self) {
+        println!("Pen down");
         self.pen_down = true;
     }
 
     pub fn move_forward(&mut self, distance: i32, image: &mut Image) {
+        println!("Moving forward by {}", distance);
         let (new_x, new_y) = unsvg::get_end_coordinates(self.x, self.y, self.heading, distance);
         if self.pen_down {
-            image.draw_simple_line(self.x, self.y, new_x, new_y, self.pen_color);
+            if let Err(e) = image.draw_simple_line(self.x, self.y, self.heading, distance, self.pen_color) {
+                println!("Error occurred when drawing image: {}", e);
+            };
         }
         self.x = new_x;
         self.y = new_y;
+        println!("Current coord: {new_x}, {new_y}");
     }
 
     pub fn move_back(&mut self, distance: i32, image: &mut Image) {
         self.move_forward(-distance, image);
     }
 
-    pub fn turn_left(&mut self, degrees: i32) {
-        self.heading += 270.0;
+    pub fn turn_left(&mut self, _: i32) {
+        self.heading += 270;
     }
 
-    pub fn turn_right(&mut self, degrees: i32) {
-        self.heading += 90.0;
+    pub fn turn_right(&mut self, _: i32) {
+        self.heading += 90;
     }
 
     pub fn set_pen_color(&mut self, color_code: usize) -> Result<(), String> {
+        println!("Setting pen color: {}", color_code);
         if color_code < 16 {
             self.pen_color = COLORS[color_code];
             Ok(())
@@ -60,15 +67,21 @@ impl Turtle {
 
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str) -> Result<(), String> {
     let commands: Vec<&str> = line.split_whitespace().collect();
+    if commands[0].starts_with("//") {
+        return Ok(()); // Ignore the comment line and return early
+    }
+    // Not comment
     match commands[0] {
         "PENUP" => turtle.pen_up(),
         "PENDOWN" => turtle.pen_down(),
         "FORWARD" => {
-            let distance: i32 = commands.get(1).ok_or("Missing input: distance")?.parse().map_err(|_| "Invalid distance")?;
+            let distance_str = commands.get(1).ok_or("Missing input: distance")?; // .parse().map_err(|_| format!("Invalid distance: {}", commands.get(1)))?;
+            let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid distance: {}", distance_str))?;
             turtle.move_forward(distance, image);
         }
         "BACK" => {
-            let distance: i32 = commands.get(1).ok_or("Missing input: distance")?.parse().map_err(|_| "Invalid distance")?;
+            let distance_str = commands.get(1).ok_or("Missing input: distance")?;
+            let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| "Invalid distance: {}, distance")?;
             turtle.move_back(distance, image);
         }
         "SETPENCOLOR" => {
