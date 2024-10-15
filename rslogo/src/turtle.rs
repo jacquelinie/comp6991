@@ -179,7 +179,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_
             }
             let color = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             if color.starts_with('"') {
-                let color_code = color.trim_start_matches('"').parse().map_err(|_| format!("Invalid color code: {}", color))?;
+                let color_code = color.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Invalid color: {}", line_number, color))?;
                 turtle.set_pen_color(color_code)?;
             } else {
                 eprintln!("Error: Error on line {}, Unknown command: {}", line_number, color);
@@ -192,7 +192,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_
             }
             let degree_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
                         if degree_str.starts_with('"') {
-                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid degree: {}", degree_str))?;
+                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Turning requires an integer.", line_number))?;
                 turtle.turn(degree);
             } else {
                 eprintln!("Error: Error on line {}, Unknown command: {}", line_number, degree_str);
@@ -205,7 +205,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_
             }
             let degree_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             if degree_str.starts_with('"') {
-                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid degree: {}", degree_str))?;
+                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Setting heading requires an integer.", line_number))?;
                 turtle.set_heading(degree);
             } else {
                 eprintln!("Error: Error on line {}, Unknown command: {}", line_number, degree_str);
@@ -218,7 +218,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_
             }
             let position_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             if position_str.starts_with('"') {
-                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid position: {}", position_str))?;
+                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
                 turtle.set_x(position);
             } else {
                 eprintln!("Error: Error on line {}, Unknown command: {}", line_number, position_str);
@@ -231,14 +231,14 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_
             }
             let position_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             if position_str.starts_with('"') {
-                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid position: {}", position_str))?;
+                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
                 turtle.set_y(position);
             } else {
                 eprintln!("Error: Error on line {}, Unknown command: {}", line_number, position_str);
                 process::exit(1);
             }
         }
-        _ => return Err(format!("Unknown command: {}, please choose from: PENUP, PENDOWN, FORWARD, BACK, SETPENCOLOR", commands[0])),
+        _ => return Err(format!("Error on line {}: Unknown command: {}", line_number, commands[0])),
     }
     Ok(())
 }
