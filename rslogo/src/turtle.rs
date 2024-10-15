@@ -1,4 +1,5 @@
 use unsvg::{Image, COLORS};
+use std::process;
 
 pub struct Turtle {
     pub x: i32,
@@ -46,12 +47,40 @@ impl Turtle {
         self.move_forward(-distance, image);
     }
 
-    pub fn turn_left(&mut self, _: i32) {
-        self.heading += 270;
+    pub fn turn(&mut self, degrees: i32) {
+        println!("Turning by: {degrees}");
+        self.heading = (self.heading + degrees) % 360;
     }
 
-    pub fn turn_right(&mut self, _: i32) {
-        self.heading += 90;
+    pub fn set_heading(&mut self, degrees: i32) {
+        println!("Setting heading: {degrees}");
+        self.heading = (degrees) % 360;
+    }
+
+    pub fn set_x(&mut self, position: i32) {
+        println!("Setting x: {position}");
+        self.x = position;
+    }
+
+    pub fn set_y(&mut self, position: i32) {
+        println!("Setting y: {position}");
+        self.y = position;
+    }
+
+    pub fn left(&mut self, distance: i32, image: &mut Image) {
+        println!("Traveling left: {distance}");
+        let curr_heading = self.heading;
+        self.heading = (self.heading - 90) % 360;
+        self.move_forward(distance, image);
+        self.heading = curr_heading;
+    }
+
+    pub fn right(&mut self, distance: i32, image: &mut Image) {
+        println!("Traveling right: {distance}");
+        let curr_heading = self.heading;
+        self.heading = (self.heading + 90) % 360;
+        self.move_forward(distance, image);
+        self.heading = curr_heading;
     }
 
     pub fn set_pen_color(&mut self, color_code: usize) -> Result<(), String> {
@@ -65,28 +94,149 @@ impl Turtle {
     }
 }
 
-pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str) -> Result<(), String> {
+pub fn error_extra_arguments(commands: &Vec<&str>, num_commands: usize) {
+    let extra_args = &commands[num_commands..];
+    let extra_args_debug: Vec<String> = extra_args.iter().map(|arg| format!("{:?}", arg)).collect();
+    let extra_args_str = extra_args_debug.join(", "); // Format Arguments
+    eprintln!("Error: Extra arguments: [{}]", extra_args_str);
+    process::exit(1);
+}
+
+pub fn execute_command(turtle: &mut Turtle, image: &mut Image, line: &str, line_number: &i32) -> Result<(), String> {
     let commands: Vec<&str> = line.split_whitespace().collect();
     if commands[0].starts_with("//") {
         return Ok(()); // Ignore the comment line and return early
     }
     // Not comment
     match commands[0] {
-        "PENUP" => turtle.pen_up(),
-        "PENDOWN" => turtle.pen_down(),
+        "PENUP" => {
+            if commands.len() > 1 {
+                error_extra_arguments(&commands, 1);
+            }
+            turtle.pen_up();
+        }
+        "PENDOWN" => {
+            if commands.len() > 1 {
+                error_extra_arguments(&commands, 1);
+            }
+            turtle.pen_down();
+        }
         "FORWARD" => {
-            let distance_str = commands.get(1).ok_or("Missing input: distance")?; // .parse().map_err(|_| format!("Invalid distance: {}", commands.get(1)))?;
-            let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid distance: {}", distance_str))?;
-            turtle.move_forward(distance, image);
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let distance_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if distance_str.starts_with('"') {
+                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
+                turtle.move_forward(distance, image);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, distance_str);
+                process::exit(1);
+            }
         }
         "BACK" => {
-            let distance_str = commands.get(1).ok_or("Missing input: distance")?;
-            let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| "Invalid distance: {}, distance")?;
-            turtle.move_back(distance, image);
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let distance_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if distance_str.starts_with('"') {
+                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
+                turtle.move_back(distance, image);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, distance_str);
+                process::exit(1);
+            }
+        }
+        "LEFT" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let distance_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if distance_str.starts_with('"') {
+                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
+                turtle.left(distance, image);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, distance_str);
+                process::exit(1);
+            }
+        }
+        "RIGHT" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let distance_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if distance_str.starts_with('"') {
+                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
+                turtle.right(distance, image);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, distance_str);
+                process::exit(1);
+            }
         }
         "SETPENCOLOR" => {
-            let color: usize = commands.get(1).ok_or("Missing input: color code")?.parse().map_err(|_| "Invalid color code")?;
-            turtle.set_pen_color(color)?;
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let color = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if color.starts_with('"') {
+                let color_code = color.trim_start_matches('"').parse().map_err(|_| format!("Invalid color code: {}", color))?;
+                turtle.set_pen_color(color_code)?;
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, color);
+                process::exit(1);
+            }
+        }
+        "TURN" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let degree_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+                        if degree_str.starts_with('"') {
+                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid degree: {}", degree_str))?;
+                turtle.turn(degree);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, degree_str);
+                process::exit(1);
+            }
+        }
+        "SETHEADING" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let degree_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if degree_str.starts_with('"') {
+                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid degree: {}", degree_str))?;
+                turtle.set_heading(degree);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, degree_str);
+                process::exit(1);
+            }
+        }
+        "SETX" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let position_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if position_str.starts_with('"') {
+                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid position: {}", position_str))?;
+                turtle.set_x(position);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, position_str);
+                process::exit(1);
+            }
+        }
+        "SETY" => {
+            if commands.len() > 2 {
+                error_extra_arguments(&commands, 2);
+            }
+            let position_str = commands.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            if position_str.starts_with('"') {
+                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Invalid position: {}", position_str))?;
+                turtle.set_y(position);
+            } else {
+                eprintln!("Error: Error on line {}, Unknown command: {}", line_number, position_str);
+                process::exit(1);
+            }
         }
         _ => return Err(format!("Unknown command: {}, please choose from: PENUP, PENDOWN, FORWARD, BACK, SETPENCOLOR", commands[0])),
     }

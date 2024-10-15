@@ -1,5 +1,6 @@
 use clap::Parser;
 use unsvg::Image;
+use std::process;
 mod turtle;
 use turtle::{Turtle, execute_command};
 
@@ -34,10 +35,16 @@ fn main() -> Result<(), ()> {
     // ========= TASK 1 =========
     // Parse File
     let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
+    let mut line_number = 0;
     for line in file_content.lines(){
-        if let Err(e) = execute_command(&mut turtle, &mut image, line) {
-            eprintln!("Error with command: {}", e);
-            return Err(());
+        line_number += 1;
+        // Skip empty lines or lines that are just whitespace
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Err(e) = execute_command(&mut turtle, &mut image, line, &line_number) {
+            eprintln!("{}", e);
+            process::exit(1);
         }
     }
 
