@@ -1,5 +1,6 @@
 use clap::Parser;
 use unsvg::Image;
+use std::collections::HashMap;
 use std::process;
 mod turtle;
 use turtle::{Turtle, execute_command};
@@ -31,6 +32,7 @@ fn main() -> Result<(), ()> {
 
     let mut image = Image::new(width, height);
     let mut turtle = Turtle::new(width, height);
+    let mut variables: HashMap<String, i32> = HashMap::new();
 
     // ========= TASK 1 =========
     // Parse File
@@ -42,8 +44,8 @@ fn main() -> Result<(), ()> {
         if line.trim().is_empty() {
             continue;
         }
-        if let Err(e) = execute_command(&mut turtle, &mut image, line, &line_number) {
-            eprintln!("{}", e);
+        if let Err(e) = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number) {
+            eprintln!("Error: {}", e);
             process::exit(1);
         }
     }
