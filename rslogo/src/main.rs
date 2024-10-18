@@ -39,11 +39,11 @@ fn main() -> Result<(), ()> {
     let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
     let mut line_number = 0;
     for line in file_content.lines(){
-        line_number += 1;
-        // Skip empty lines or lines that are just whitespace
-        if line.trim().is_empty() {
+        // Skip empty lines or comments
+        if line.trim().is_empty() || line.starts_with("//")  {
             continue;
         }
+        line_number += 1;
         if let Err(e) = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number) {
             eprintln!("Error: {}", e);
             process::exit(1);

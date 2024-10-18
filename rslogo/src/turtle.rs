@@ -105,9 +105,6 @@ pub fn error_extra_arguments(commands: &Vec<&str>, num_commands: usize) {
 
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, i32>, line: &str, line_number: &i32) -> Result<(), String> {
     let commands: Vec<&str> = line.split_whitespace().collect();
-    if commands[0].starts_with("//") {
-        return Ok(()); // Ignore the comment line and return early
-    }
     // Not comment
     match commands[0] {
         // ============= TASK 1 =============
@@ -270,7 +267,6 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         }
         // ================ TASK 2 ================
         "MAKE" => {
-            println!("Making variable.");
             if commands.len() > 3 {
                 error_extra_arguments(&commands, 2);
             }
@@ -280,6 +276,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
                 let var_name = var_name_str.trim_start_matches('"');
                 let var_val: i32 = var_val_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
                 variables.insert(var_name.to_string(), var_val);
+                println!("Made variable {}: {}", var_name, var_val);
             } else {
                 return Err(format!("Error on line {}, Unknown command: {}", line_number, var_val_str));
             }
