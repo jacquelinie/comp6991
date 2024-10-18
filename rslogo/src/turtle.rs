@@ -95,8 +95,11 @@ impl Turtle {
     }
 }
 
-pub fn error_extra_arguments(commands: &Vec<&str>, num_commands: usize) {
-    let extra_args = &commands[num_commands..];
+pub fn error_extra_arguments(inputs: &Vec<&str>, num_inputs: usize) {
+    if inputs.len() <= num_inputs {
+        return;
+    }
+    let extra_args = &inputs[num_inputs..];
     let extra_args_debug: Vec<String> = extra_args.iter().map(|arg| format!("{:?}", arg)).collect();
     let extra_args_str = extra_args_debug.join(", "); // Format Arguments
     eprintln!("Error: Extra arguments: [{}]", extra_args_str);
@@ -104,191 +107,105 @@ pub fn error_extra_arguments(commands: &Vec<&str>, num_commands: usize) {
 }
 
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, i32>, line: &str, line_number: &i32) -> Result<(), String> {
-    let commands: Vec<&str> = line.split_whitespace().collect();
+    let inputs: Vec<&str> = line.split_whitespace().collect();
+    let mut arguments = Vec::new();
+    // Parse Args
+    for input in &inputs[1..] {
+        // " variable
+        if input.starts_with('"') {
+            arguments.push(input.trim_start_matches('"').to_string());
+
+        // : variable
+        } else if input.starts_with(':') {
+            let var_name = input.trim_start_matches(':');
+            let arg = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
+            arguments.push(arg.to_string());
+
+        } else {
+            return Err(format!("Error on line {}, Unknown command: {}", line_number, input));
+        }
+    }
+
     // Not comment
-    match commands[0] {
+    match inputs[0] {
         // ============= TASK 1 =============
-        "PENUP" => {
-            if commands.len() > 1 {
-                error_extra_arguments(&commands, 1);
-            }
+        "PENUP" => { // Just pen up
+            error_extra_arguments(&inputs, 1);
             turtle.pen_up();
         }
-        "PENDOWN" => {
-            if commands.len() > 1 {
-                error_extra_arguments(&commands, 1);
-            }
+        "PENDOWN" => { // Just pen down
+            error_extra_arguments(&inputs, 1);
             turtle.pen_down();
         }
-        "FORWARD" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let distance_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if distance_str.starts_with('"') {
-                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
-                turtle.move_forward(distance, image);
-            } else if distance_str.starts_with(':') {
-                let var_name = distance_str.trim_start_matches(':');
-                let distance = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.move_forward(distance, image);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, distance_str));
-            }
+        "FORWARD" => { // Forward dist
+            error_extra_arguments(&inputs, 2);
+            let distance_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let distance: i32 = distance_str.parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
+            turtle.move_forward(distance, image);
         }
-        "BACK" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let distance_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if distance_str.starts_with('"') {
-                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
-                turtle.move_back(distance, image);
-            } else if distance_str.starts_with(':') {
-                let var_name = distance_str.trim_start_matches(':');
-                let distance = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.move_back(distance, image);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, distance_str));
-            }
+        "BACK" => { // Back dist
+            error_extra_arguments(&inputs, 2);
+            let distance_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let distance: i32 = distance_str.parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
+            turtle.move_back(distance, image);
         }
-        "LEFT" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let distance_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if distance_str.starts_with('"') {
-                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
-                turtle.left(distance, image);
-            } else if distance_str.starts_with(':') {
-                let var_name = distance_str.trim_start_matches(':');
-                let distance = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.left(distance, image);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, distance_str));
-            }
+        "LEFT" => { // Left dist
+            error_extra_arguments(&inputs, 2);
+            let distance_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let distance: i32 = distance_str.parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
+            turtle.left(distance, image);
         }
-        "RIGHT" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let distance_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if distance_str.starts_with('"') {
-                let distance: i32 = distance_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
-                turtle.right(distance, image);
-            } else if distance_str.starts_with(':') {
-                let var_name = distance_str.trim_start_matches(':');
-                let distance = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.right(distance, image);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, distance_str));
-            }
+        "RIGHT" => { // Right dist
+            error_extra_arguments(&inputs, 2);
+            let distance_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let distance: i32 = distance_str.parse().map_err(|_| format!("Error on line {}: Drawing requires an integer argument", line_number))?;
+            turtle.right(distance, image);
         }
-        "SETPENCOLOR" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let color = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if color.starts_with('"') {
-                let color_code = color.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Invalid color: {}", line_number, color))?;
-                turtle.set_pen_color(color_code)?; // TODO: if let Err =
-            } else if color.starts_with(':') {
-                let var_name = color.trim_start_matches(':');
-                let color_code_int = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                let color_code = color_code_int.try_into().expect("Failed to convert to usize");
-                turtle.set_pen_color(color_code)?;
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, color));
-            }
+        "SETPENCOLOR" => { // Setpencolor color
+            error_extra_arguments(&inputs, 2);
+            let color = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let color_code = color.parse().map_err(|_| format!("Error on line {}: Invalid color: {}", line_number, color))?;
+            turtle.set_pen_color(color_code)?; // TODO: if let Err =
         }
-        "TURN" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let degree_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if degree_str.starts_with('"') {
-                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Turning requires an integer.", line_number))?;
-                turtle.turn(degree);
-            } else if degree_str.starts_with(':') {
-                let var_name = degree_str.trim_start_matches(':');
-                let degree = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.turn(degree);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, degree_str));
-            }
+        "TURN" => { // Turn degrees
+            error_extra_arguments(&inputs, 2);
+            let degree_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let degree: i32 = degree_str.parse().map_err(|_| format!("Error on line {}: Turning requires an integer.", line_number))?;
+            turtle.turn(degree);
         }
-        "SETHEADING" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let degree_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if degree_str.starts_with('"') {
-                let degree: i32 = degree_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Setting heading requires an integer.", line_number))?;
-                turtle.set_heading(degree);
-            } else if degree_str.starts_with(':') {
-                let var_name = degree_str.trim_start_matches(':');
-                let degree = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.set_heading(degree);
-            } else  {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, degree_str));
-            }
+        "SETHEADING" => { // Setheading degrees
+            error_extra_arguments(&inputs, 2);
+            let degree_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let degree: i32 = degree_str.parse().map_err(|_| format!("Error on line {}: Setting heading requires an integer.", line_number))?;
+            turtle.set_heading(degree);
         }
-        "SETX" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let position_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if position_str.starts_with('"') {
-                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
-                turtle.set_x(position);
-            } else if position_str.starts_with(':') {
-                let var_name = position_str.trim_start_matches(':');
-                let position = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.set_x(position);
-            } else  {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, position_str));
-            }
+        "SETX" => { // Setx x
+            error_extra_arguments(&inputs, 2);
+            let position_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let position: i32 = position_str.parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
+            turtle.set_x(position);
         }
-        "SETY" => {
-            if commands.len() > 2 {
-                error_extra_arguments(&commands, 2);
-            }
-            let position_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if position_str.starts_with('"') {
-                let position: i32 = position_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
-                turtle.set_y(position);
-            } else if position_str.starts_with(':') {
-                let var_name = position_str.trim_start_matches(':');
-                let position = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
-                turtle.set_y(position);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, position_str));
-            }
+        "SETY" => { // Sety y
+            error_extra_arguments(&inputs, 2);
+            let position_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let position: i32 = position_str.parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
+            turtle.set_y(position);
         }
         // ================ TASK 2 ================
-        "MAKE" => {
-            if commands.len() > 3 {
-                error_extra_arguments(&commands, 2);
-            }
-            let var_name_str = commands.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            let var_val_str = commands.get(2).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            if var_name_str.starts_with('"') && var_val_str.starts_with('"') {
-                let var_name = var_name_str.trim_start_matches('"');
-                let var_val: i32 = var_val_str.trim_start_matches('"').parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
-                variables.insert(var_name.to_string(), var_val);
-                println!("Made variable {}: {}", var_name, var_val);
-            } else {
-                return Err(format!("Error on line {}, Unknown command: {}", line_number, var_val_str));
-            }
+        "MAKE" => { // Make var_name value
+            error_extra_arguments(&inputs, 3);
+            let var_name_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let var_val_str = arguments.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let var_val: i32 = var_val_str.parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
+            variables.insert(var_name_str.to_string(), var_val);
+            println!("Made variable {}: {}", var_name_str, var_val);
         }
-        "ADDASSIGN" => {
-            if commands.len() > 3 {
-                error_extra_arguments(&commands, 2);
-            }
-            // let var_name = commands[1].trim_start_matches(':');
+        "ADDASSIGN" => { // AddAssign v1 v2
+            error_extra_arguments(&inputs, 3);
+            // let var_name = inputs[1].trim_start_matches(':');
             // let existing_value = variables.get_mut(var_name).ok_or(format!("Error on line {}: Variable {} not found", line_number, var_name))?;
 
-            // let add_value_str = commands[2];
+            // let add_value_str = inputs[2];
             // let add_value = if add_value_str.starts_with(':') {
             //     let add_var_name = add_value_str.trim_start_matches(':');
             //     variables.get(add_var_name).ok_or(format!("Error on line {}: Variable {} not found", line_number, add_var_name))?;
@@ -300,7 +217,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
             // println!("Added {} to {}, new value: {}", add_value, var_name, existing_value);
         }
 
-        _ => return Err(format!("Error on line {}: Unknown command: {}", line_number, commands[0])),
+        _ => return Err(format!("Error on line {}: Unknown command: {}", line_number, inputs[0])),
     }
     Ok(())
 }
