@@ -118,7 +118,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         // : variable
         } else if input.starts_with(':') {
             let var_name = input.trim_start_matches(':');
-            let arg = *variables.get(var_name).ok_or(format!("Error on line {}: Variable doesn't exist: {}", line_number, var_name))?;
+            let arg = *variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?;
             arguments.push(arg.to_string());
 
         } else {
@@ -175,19 +175,19 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         }
         "SETHEADING" => { // Setheading degrees
             error_extra_arguments(&inputs, 2);
-            let degree_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let degree_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
             let degree: i32 = degree_str.parse().map_err(|_| format!("Error on line {}: Setting heading requires an integer.", line_number))?;
             turtle.set_heading(degree);
         }
         "SETX" => { // Setx x
             error_extra_arguments(&inputs, 2);
-            let position_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let position_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_x(position);
         }
         "SETY" => { // Sety y
             error_extra_arguments(&inputs, 2);
-            let position_str = inputs.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
+            let position_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_y(position);
         }
