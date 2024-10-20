@@ -110,42 +110,36 @@ impl Turtle {
     }
 
     // Make variable
-    pub fn make(&mut self, var_name: &str, var_val: i32, variables: &mut HashMap<String, i32>) {
+    pub fn make(&mut self, var_name: &str, var_val: &str, variables: &mut HashMap<String, String>, line_number: &i32) {
         println!("Making variable {}: {}", var_name, var_val);
+        let val = 0;
+        if let Ok(_val) = var_val.parse::<i32>() {
+            ();
+        } else {
+            // Make variable variable case
+            variables.insert(var_name.to_string(), var_val.to_string());
+            variables.insert(var_val.to_string(), var_name.to_string());
+        }
         match var_name {
             "XCOR" => {
-                self.x = var_val;
+                self.x = val;
             }
             "YCOR" => {
-                self.y = var_val;
+                self.y = val;
             }
             "HEADING" => {
-                self.heading = var_val;
+                self.heading = val;
             }
             "COLOR" => {
-                self.pen_color_code = var_val;
-                let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
+                self.pen_color_code = val;
+                let color_code: usize = val.try_into().unwrap_or_else(|_| {
                 panic!("The usize value is too large to fit into an i32"); });
                 self.pen_color = COLORS[color_code];
             }
             _ => {
-                variables.insert(var_name.to_string(), var_val);
+                variables.insert(var_name.to_string(), var_val.to_string());
             }
         }
-        // if var_name == "XCOR" {
-        //     self.x = var_val;
-        // } else if var_name == "YCOR" {
-        //     self.y = var_val;
-        // } else if var_name == "HEADING" {
-        //     self.heading = var_val;
-        // } else if var_name == "COLOR" {
-        //     self.pen_color_code = var_val;
-        //     let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
-        //         panic!("The usize value is too large to fit into an i32"); });
-        //     self.pen_color = COLORS[color_code];
-        // } else {
-        //     variables.insert(var_name.to_string(), var_val);
-        // }
     }
 }
 
@@ -181,10 +175,10 @@ pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
 }
 
 // Execute command line arguments
-pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, i32>, line: &str, line_number: &i32) -> Result<(), String> {
+pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, String>, line: &str, line_number: &i32) -> Result<(), String> {
     let inputs: Vec<&str> = line.split_whitespace().collect();
-    let mut arguments = Vec::new();
     let command = inputs[0];
+    let mut arguments = Vec::new();
 
     // Parse Args
     for (i, input) in inputs[1..].iter().enumerate() {
@@ -205,7 +199,7 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         else if input.starts_with('"') {
             let var_name = input.trim_start_matches('"');
             if command == "ADDASSIGN" && i == 0 {
-                let arg = *variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?;
+                let arg = variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?.clone();
                 arguments.push(var_name.to_string());
                 arguments.push(arg.to_string());
             } else {
@@ -216,14 +210,21 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         // : variable
         else if input.starts_with(':') {
             let var_name = input.trim_start_matches(':');
-            let arg = *variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?;
+            let mut value = variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?.clone();
+            if let Ok(_) = value.parse::<i32>() {
+                ();
+            } else {
+                // In the case of Variable : Variable
+                value = variables.get(var_name).ok_or(format!("Error on line {}: Could not find variable: {}", line_number, var_name))?.clone();
+            }
+            // Add to arguments
             if command == "MAKE" && i == 0 {
                 arguments.push(var_name.to_string());
             } else if command == "ADDASSIGN" && i == 0 {
                 arguments.push(var_name.to_string());
-                arguments.push(arg.to_string());
+                arguments.push(value);
             } else {
-                arguments.push(arg.to_string());
+                arguments.push(value);
             }
         } else {
             return Err(format!("Error on line {}, Unknown command: {}", line_number, input));
@@ -302,10 +303,10 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
             error_extra_arguments(&inputs, 3);
             let var_name_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
             let var_val_str = arguments.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-            let var_val: i32 = var_val_str.parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
-            turtle.make(var_name_str, var_val, variables);
+            // let var_val: i32 = var_val_str.parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
+            turtle.make(var_name_str, var_val_str, variables, line_number);
         }
-        "ADDASSIGN" => { // AddAssign v1 v2 ADDASSIGN "forwardDist :dist
+        "ADDASSIGN" => { // AddAssign v1 v2 | ADDASSIGN "forwardDist :dist | arguments = [val_name, v1, v2]
             error_extra_arguments(&inputs, 3);
             println!("{:?}", arguments);
             let var_name_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
@@ -313,10 +314,8 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
             let v2_str = arguments.get(2).ok_or(format!("Error on line {}: Empty line", line_number))?;
             let v1: i32 = v1_str.parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
             let v2: i32 = v2_str.parse().map_err(|_| format!("Error on line {}: Making variable requires a value.", line_number))?;
-            turtle.make(var_name_str, v1 + v2, variables);
-
+            turtle.make(var_name_str, &(v1 + v2).to_string(), variables, line_number);
         }
-
         _ => return Err(format!("Error on line {}: Unknown command: {}", line_number, command)),
     }
     Ok(())
