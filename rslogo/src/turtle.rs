@@ -2,6 +2,7 @@ use unsvg::{Image, COLORS};
 use std::process;
 use std::collections::HashMap;
 
+// Turtle struct to store information
 pub struct Turtle {
     pub x: i32,
     pub y: i32,
@@ -11,6 +12,7 @@ pub struct Turtle {
     pub pen_color: unsvg::Color, // Color code as defined in unsvg COLORS array
 }
 
+// Initialise turtle
 impl Turtle {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
@@ -23,16 +25,19 @@ impl Turtle {
         }
     }
 
+    // Make pen up
     pub fn pen_up(&mut self) {
         println!("Pen up");
         self.pen_down = false;
     }
 
+    // Make pen down
     pub fn pen_down(&mut self) {
         println!("Pen down");
         self.pen_down = true;
     }
 
+    // Move turtle forward
     pub fn move_forward(&mut self, distance: i32, image: &mut Image) {
         println!("Moving forward by {}", distance);
         let (new_x, new_y) = unsvg::get_end_coordinates(self.x, self.y, self.heading, distance);
@@ -46,30 +51,36 @@ impl Turtle {
         println!("Current coord: {new_x}, {new_y}");
     }
 
+    // Move turtle backward
     pub fn move_back(&mut self, distance: i32, image: &mut Image) {
         self.move_forward(-distance, image);
     }
 
+    // Turn turtle
     pub fn turn(&mut self, degrees: i32) {
         println!("Turning by: {degrees}");
         self.heading = (self.heading + degrees) % 360;
     }
 
+    // Set heading of turtle
     pub fn set_heading(&mut self, degrees: i32) {
         println!("Setting heading: {degrees}");
         self.heading = (degrees) % 360;
     }
 
+    // Set x coord
     pub fn set_x(&mut self, position: i32) {
         println!("Setting x: {position}");
         self.x = position;
     }
 
+    // Set y coord
     pub fn set_y(&mut self, position: i32) {
         println!("Setting y: {position}");
         self.y = position;
     }
 
+    // Travel left
     pub fn left(&mut self, distance: i32, image: &mut Image) {
         println!("Traveling left: {distance}");
         let curr_heading = self.heading;
@@ -78,6 +89,7 @@ impl Turtle {
         self.heading = curr_heading;
     }
 
+    // Travel right
     pub fn right(&mut self, distance: i32, image: &mut Image) {
         println!("Traveling right: {distance}");
         let curr_heading = self.heading;
@@ -86,6 +98,7 @@ impl Turtle {
         self.heading = curr_heading;
     }
 
+    // Set pen color (unsvg uses color, hence to remain consistent I spelt colour as color)
     pub fn set_pen_color(&mut self, color_code: usize) -> Result<(), String> {
         println!("Setting pen color: {}", color_code);
         if color_code < 16 {
@@ -96,42 +109,44 @@ impl Turtle {
         }
     }
 
+    // Make variable
     pub fn make(&mut self, var_name: &str, var_val: i32, variables: &mut HashMap<String, i32>) {
-        if var_name == "XCOR" {
-            self.x = var_val;
-        } else if var_name == "YCOR" {
-            self.y = var_val;
-        } else if var_name == "HEADING" {
-            self.heading = var_val;
-        } else if var_name == "COLOR" {
-            self.pen_color_code = var_val;
-            let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
+        println!("Making variable {}: {}", var_name, var_val);
+        match var_name {
+            "XCOR" => {
+                self.x = var_val;
+            }
+            "YCOR" => {
+                self.y = var_val;
+            }
+            "HEADING" => {
+                self.heading = var_val;
+            }
+            "COLOR" => {
+                self.pen_color_code = var_val;
+                let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
                 panic!("The usize value is too large to fit into an i32"); });
-            self.pen_color = COLORS[color_code];
-        } else {
-            variables.insert(var_name.to_string(), var_val);
+                self.pen_color = COLORS[color_code];
+            }
+            _ => {
+                variables.insert(var_name.to_string(), var_val);
+            }
         }
-        println!("Made variable {}: {}", var_name, var_val);
+        // if var_name == "XCOR" {
+        //     self.x = var_val;
+        // } else if var_name == "YCOR" {
+        //     self.y = var_val;
+        // } else if var_name == "HEADING" {
+        //     self.heading = var_val;
+        // } else if var_name == "COLOR" {
+        //     self.pen_color_code = var_val;
+        //     let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
+        //         panic!("The usize value is too large to fit into an i32"); });
+        //     self.pen_color = COLORS[color_code];
+        // } else {
+        //     variables.insert(var_name.to_string(), var_val);
+        // }
     }
-
-    // pub fn add_assign(&mut self, var_name: &str, var_val: i32, variables: &mut HashMap<String, i32>) {
-    //     if var_name == "XCOR" {
-    //         self.x = var_val;
-    //     } else if var_name == "YCOR" {
-    //         self.y = var_val;
-    //     } else if var_name == "HEADING" {
-    //         self.heading = var_val;
-    //     } else if var_name == "COLOR" {
-    //         self.pen_color_code = var_val;
-    //         let color_code: usize = var_val.try_into().unwrap_or_else(|_| {
-    //             panic!("The usize value is too large to fit into an i32"); });
-    //         self.pen_color = COLORS[color_code];
-    //     } else {
-    //         // Put var back into hashmap
-    //         variables.insert(var_name.to_string(), var_val);
-    //     }
-    //     println!("Made variable {}: {}", var_name, var_val);
-    // }
 }
 
 // If there are extra arguments, return error
@@ -165,10 +180,12 @@ pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     }
 }
 
+// Execute command line arguments
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, i32>, line: &str, line_number: &i32) -> Result<(), String> {
     let inputs: Vec<&str> = line.split_whitespace().collect();
     let mut arguments = Vec::new();
     let command = inputs[0];
+
     // Parse Args
     for (i, input) in inputs[1..].iter().enumerate() {
         // Queries - (XCOR: return the current x coordinate. YCOR: return the current y coordinate.
