@@ -189,9 +189,9 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         // Queries - (XCOR: return the current x coordinate. YCOR: return the current y coordinate.
         // HEADING: return the current heading. COLOR: return the color of the pen, as an number.)
         if *input == "XCOR" || *input == "YCOR" || *input == "HEADING" || *input == "COLOR" {
-            if command == "MAKE" && i == 0 {
-                arguments.push(input.to_string());
-            } else if command == "ADDASSIGN" && i == 0{
+            // if command == "MAKE" && i == 0 {
+            //     arguments.push(input.to_string());
+            if command == "ADDASSIGN" && i == 0{
                 arguments.push(input.to_string());
                 arguments.push(parse_queries(turtle, input).to_string());
             } else {
