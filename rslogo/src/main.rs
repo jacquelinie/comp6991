@@ -3,7 +3,7 @@ use unsvg::Image;
 use std::collections::HashMap;
 use std::process;
 mod turtle;
-use turtle::{Turtle, execute_command};
+use turtle::{Turtle, execute_command, parse_args, error_extra_arguments};
 
 /// A simple program to parse four arguments using clap.
 #[derive(Parser)]
@@ -22,11 +22,11 @@ struct Args {
 }
 
 // Count indentations at the start of the line for loops
-fn count_indentation(line: &str) -> usize {
-    line.chars()
-        .take_while(|ch| ch.is_whitespace())
-        .count()
-}
+// fn count_indentation(line: &str) -> usize {
+//     line.chars()
+//         .take_while(|ch| ch.is_whitespace())
+//         .count()
+// }
 
 fn main() -> Result<(), ()> {
     let args: Args = Args::parse();
@@ -45,57 +45,49 @@ fn main() -> Result<(), ()> {
     // Parse File
     let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
     let mut line_number = 0;
+
+    // Stack to track conditional execution
+    let mut condition_stack: Vec<bool> = Vec::new();
+
     for line in file_content.lines(){
-        // let curr_indentation = count_indentation(line);
-        // let mut if_indentation = 0;
-        // let mut while_indentation = 0;
         // Skip empty lines or comments
         if line.trim().is_empty() || line.starts_with("//")  {
             continue;
         }
-        // if line.starts_with("IF") {
-        //     inputs.drain(0..1);
-        //     if_indentation = count_indentation(line);
-        // }
-        // if line.starts_with("WHILE") {
-        //     inputs.drain(0..1);
-        //     while_indentation = count_indentation(line);
-        // }
-        // // If loop
-        // pub fn if_loop(&mut self, curr_loop: Vec<&str>, image: &mut Image,
-        //     variables: &mut HashMap<String, String>, line_number: &i32) {
-        //     println!("If Looping");
-        //     for line in curr_loop[1..].iter() {
-        //         let line_num = line_number + 1;
-        //         if let Err(e) = execute_command(self, image, variables, line, &line_num) {
-        //             eprintln!("Error: {}", e);
-        //             process::exit(1);
-        //         }
-        //     }
-        // }
-        // // ================ TASK 3 ================
-        // "IF" => { // IF EQ v1 v2
-        //     error_extra_arguments(&inputs, 4);
-        //     let v1_str = arguments.get(0).ok_or(format!("Error on line {}: Empty line", line_number))?;
-        //     let v2_str = arguments.get(1).ok_or(format!("Error on line {}: Empty line", line_number))?;
-        //     let v1: i32 = v1_str.parse().map_err(|_| format!("Error on line {}: If statement requires a value.", line_number))?;
-        //     let v2: i32 = v2_str.parse().map_err(|_| format!("Error on line {}: If statement requires a value.", line_number))?;
 
-        //     if v1 == v2 {
-        //         let mut curr_loop: Vec<&str> = Vec::new();
-        //         while inputs[0] != "[" && curr_indentation != if_indentation {
-        //             curr_loop.push(line);
-        //         }
-        //         turtle.if_loop(curr_loop, image, variables, line_number);
-        //     }
-        // }
+        // TO IMPLEMENT:
+        // There is if: check if true, and then add bool into stack
+        // Check if stack has a false, if false (DONT EXECUTE)
+        // If stack is all true or empty, (EXECUTE COMMAND)
+        // if the line is '[' => remove top most bool
 
-        // "WHILE" => { // IF EQ v1 v2
-
-        // }
+        // Increment line
         line_number += 1;
+        let inputs: Vec<&str> = line.split_whitespace().collect();
+
+        // Handle 'IF EQ' conditions
+        if inputs[0] == "IF" {
+            condition_stack.push(evaluate_condition(&mut turtle, &variables, line, inputs, &line_number, "IF"));
+            continue;
+        }
+
+        // Handle ']': End of a block
+        if inputs[0] == "]" {
+            if condition_stack.pop().is_none() {
+                eprintln!("Error: Mismatched ']' at line {}", line_number);
+                process::exit(1);
+            }
+            continue;
+        }
+
+        // Skip command if any condition in the stack is false
+        if condition_stack.contains(&false) {
+            continue;
+        }
+
+        // Execute Command
         if let Err(e) = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number) {
-            eprintln!("Error: {}", e);
+            eprintln!("{}", e);
             process::exit(1);
         }
     }
@@ -122,4 +114,17 @@ fn main() -> Result<(), ()> {
     }
 
     Ok(())
+}
+
+// Evaluate the condition for IF EQ
+fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, line: &str, inputs: Vec<&str>, line_number: &i32, command: &str) -> bool {
+    // Parse the condition (e.g., "IF EQ XCOR 50")
+    error_extra_arguments(&inputs, 4);
+    if inputs.len() < 4 {
+        eprintln!("Error: Error on line {}: Empty line", line_number);
+        process::exit(1);
+    }
+    let arguments = parse_args(&inputs[1..], command, line_number, turtle, variables)?;
+
+    lhs == rhs
 }
