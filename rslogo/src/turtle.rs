@@ -183,6 +183,7 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
         let operators = ["*", "-", "+", "/"];
         if operators.iter().any(|&op| inputs.contains(&op)) {
             // Handle math expressions
+            ();
         }
 
         // Queries - (XCOR, YCOR, HEADING, COLOR)

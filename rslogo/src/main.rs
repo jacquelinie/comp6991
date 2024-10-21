@@ -41,28 +41,25 @@ fn main() -> Result<(), ()> {
     let mut turtle = Turtle::new(width, height);
     let mut variables: HashMap<String, String> = HashMap::new();
 
-    // ========= ASSIGNMENT =========
-    // Parse File
-    let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
-    let mut line_number = 0;
-
     // Stack to track conditional execution
     let mut condition_stack: Vec<bool> = Vec::new();
 
-    for line in file_content.lines(){
+    // To store the lines for re-execution inside a loop
+    let mut loop_stack: Vec<(i32, Vec<String>)> = Vec::new();
+
+    let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
+    let mut line_number: i32 = 0;
+    let lines: Vec<&str> = file_content.lines().collect();
+
+    while line_number < lines.len() as i32 {
+        let line = lines[line_number as usize];
+        
         // Skip empty lines or comments
-        if line.trim().is_empty() || line.starts_with("//")  {
+        if line.trim().is_empty() || line.starts_with("//") {
+            line_number += 1;
             continue;
         }
 
-        // TO IMPLEMENT:
-        // There is if: check if true, and then add bool into stack
-        // Check if stack has a false, if false (DONT EXECUTE)
-        // If stack is all true or empty, (EXECUTE COMMAND)
-        // if the line is '[' => remove top most bool
-
-        // Increment line
-        line_number += 1;
         let mut inputs: Vec<&str> = line.split_whitespace().collect();
 
         // Handle ']': End of a block
@@ -71,19 +68,53 @@ fn main() -> Result<(), ()> {
                 eprintln!("Error: Mismatched ']' at line {}", line_number);
                 process::exit(1);
             }
+
+            // Check if we need to repeat the WHILE loop
+            if let Some((_start_line, loop_commands)) = loop_stack.last_mut() {
+                if evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "WHILE") {
+                    // Re-execute the stored loop commands
+                    for loop_line in loop_commands.iter() {
+                        execute_command(&mut turtle, &mut image, &mut variables, loop_line, &line_number)
+                            .map_err(|e| eprintln!("{}", e))?;
+                    }
+                } else {
+                    // Exit the loop if condition becomes false
+                    loop_stack.pop();
+                }
+            }
+
+            line_number += 1;
             continue;
         }
 
         // Handle 'IF EQ' conditions
         if inputs[0] == "IF" {
-            println!("Adding IF bool");
             condition_stack.push(evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "IF"));
-            println!("Curr Stack: {:?}", condition_stack);
+            line_number += 1;
             continue;
+        }
+
+        // Handle 'WHILE EQ' loop
+        if inputs[0] == "WHILE" {
+            let is_true = evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "WHILE");
+            condition_stack.push(is_true);
+
+            // Store the starting point of the loop
+            loop_stack.push((line_number, Vec::new()));
+            line_number += 1;
+            continue;
+        }
+
+        // If inside a WHILE loop, store the commands to re-execute later
+        if !loop_stack.is_empty() {
+            if let Some((_, loop_commands)) = loop_stack.last_mut() {
+                loop_commands.push(line.to_string());
+            }
         }
 
         // Skip command if any condition in the stack is false
         if condition_stack.contains(&false) {
+            line_number += 1;
             continue;
         }
 
@@ -92,6 +123,8 @@ fn main() -> Result<(), ()> {
             eprintln!("{}", e);
             process::exit(1);
         }
+
+        line_number += 1;
     }
 
     match image_path.extension().and_then(|s| s.to_str()) {
@@ -114,19 +147,22 @@ fn main() -> Result<(), ()> {
             return Err(());
         }
     }
+
+    // Check that loops are closed
     if !condition_stack.is_empty() {
         eprintln!("Error: Stack not empty at end of program");
         return Err(());
     }
+    
     Ok(())
 }
 
-// Evaluate the condition for IF EQ
+// Evaluate the condition for IF EQ and WHILE EQ
 fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut Vec<&str>, line_number: &i32, command: &str) -> bool {
-    // Parse the condition (e.g., "IF EQ XCOR 50")
+    // Parse the condition (e.g., "WHILE EQ XCOR 50" or "IF EQ XCOR 50")
     error_extra_arguments(&inputs, 5);
     if inputs.len() < 5 {
-        eprintln!("Error: Error on line {}: Empty line", line_number);
+        eprintln!("Error: Error on line {}: Invalid format", line_number);
         process::exit(1);
     }
     inputs.pop(); // remove "]"
