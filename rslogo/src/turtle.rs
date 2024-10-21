@@ -145,6 +145,7 @@ impl Turtle {
 
 // If there are extra arguments, return error
 pub fn error_extra_arguments(inputs: &Vec<&str>, num_inputs: usize) {
+    // Check for math in inputs
     if inputs.len() <= num_inputs {
         return;
     }
@@ -183,6 +184,7 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
         let operators = ["*", "-", "+", "/"];
         if operators.iter().any(|&op| inputs.contains(&op)) {
             // Handle math expressions
+            ();
         }
 
         // Queries - (XCOR, YCOR, HEADING, COLOR)
@@ -223,15 +225,21 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
                     line_number, var_name
                 ))?
                 .clone();
+            // Parse value, check for true and false
             if value.parse::<i32>().is_err() {
-                value = variables
-                    .get(&value)
-                    .ok_or(format!(
-                        "Error: Error on line {}: Could not find variable: {}",
-                        line_number, var_name
-                    ))?
-                    .clone();
+                if value == "TRUE" || value == "FALSE" {
+                    ()
+                } else {
+                    value = variables
+                        .get(&value)
+                        .ok_or(format!(
+                            "Error: Error on line {}: Could not find variable: {}",
+                            line_number, var_name
+                        ))?
+                        .clone();
+                }
             }
+            // Push value
             if command == "MAKE" && i == 0 {
                 arguments.push(var_name.to_string());
             } else if command == "ADDASSIGN" && i == 0 {
