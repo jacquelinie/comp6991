@@ -225,6 +225,8 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
                 ))?
                 .clone();
             if value.parse::<i32>().is_err() {
+                if value == "TRUE" {arguments.push("TRUE".to_string());};
+                if value == "FALSE" {arguments.push("FALSE".to_string());};
                 value = variables
                     .get(&value)
                     .ok_or(format!(

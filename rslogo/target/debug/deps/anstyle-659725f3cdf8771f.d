@@ -1,0 +1,10 @@
+C:\Users\TechFast Australia\Desktop\comp6991\rslogo\target\debug\deps\libanstyle-659725f3cdf8771f.rmeta: C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src/lib.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\macros.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\color.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\effect.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\reset.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\style.rs
+
+C:\Users\TechFast Australia\Desktop\comp6991\rslogo\target\debug\deps\anstyle-659725f3cdf8771f.d: C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src/lib.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\macros.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\color.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\effect.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\reset.rs C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\style.rs
+
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src/lib.rs:
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\macros.rs:
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\color.rs:
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\effect.rs:
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\reset.rs:
+C:\Users\TechFast\ Australia\.cargo\registry\src\index.crates.io-6f17d22bba15001f\anstyle-1.0.8\src\style.rs:
