@@ -63,13 +63,7 @@ fn main() -> Result<(), ()> {
 
         // Increment line
         line_number += 1;
-        let inputs: Vec<&str> = line.split_whitespace().collect();
-
-        // Handle 'IF EQ' conditions
-        if inputs[0] == "IF" {
-            condition_stack.push(evaluate_condition(&mut turtle, &variables, line, inputs, &line_number, "IF"));
-            continue;
-        }
+        let mut inputs: Vec<&str> = line.split_whitespace().collect();
 
         // Handle ']': End of a block
         if inputs[0] == "]" {
@@ -77,6 +71,14 @@ fn main() -> Result<(), ()> {
                 eprintln!("Error: Mismatched ']' at line {}", line_number);
                 process::exit(1);
             }
+            continue;
+        }
+
+        // Handle 'IF EQ' conditions
+        if inputs[0] == "IF" {
+            println!("Adding IF bool");
+            condition_stack.push(evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "IF"));
+            println!("Curr Stack: {:?}", condition_stack);
             continue;
         }
 
@@ -112,19 +114,29 @@ fn main() -> Result<(), ()> {
             return Err(());
         }
     }
-
+    if !condition_stack.is_empty() {
+        eprintln!("Error: Stack not empty at end of program");
+        return Err(());
+    }
     Ok(())
 }
 
 // Evaluate the condition for IF EQ
-fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, line: &str, inputs: Vec<&str>, line_number: &i32, command: &str) -> bool {
+fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut Vec<&str>, line_number: &i32, command: &str) -> bool {
     // Parse the condition (e.g., "IF EQ XCOR 50")
-    error_extra_arguments(&inputs, 4);
-    if inputs.len() < 4 {
+    error_extra_arguments(&inputs, 5);
+    if inputs.len() < 5 {
         eprintln!("Error: Error on line {}: Empty line", line_number);
         process::exit(1);
     }
-    let arguments = parse_args(&inputs[1..], command, line_number, turtle, variables)?;
+    inputs.pop(); // remove "]"
+    let arguments = match parse_args(&inputs[2..], command, line_number, turtle, variables) {
+        Ok(args) => args,
+        Err(e) => {
+            eprintln!("{}", e);
+            process::exit(1);
+        }
+    };
 
-    lhs == rhs
+    return arguments.get(0) == arguments.get(1);
 }
