@@ -146,6 +146,7 @@ impl Turtle {
 // If there are extra arguments, return error
 pub fn error_extra_arguments(inputs: &Vec<&str>, num_inputs: usize) {
     // Check for math in inputs
+
     if inputs.len() <= num_inputs {
         return;
     }
@@ -175,6 +176,22 @@ pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     }
 }
 
+pub fn parse_math(turtle: &mut Turtle, inputs: &[&str], command: &str, line_number: &i32, variables: &HashMap<String, String>) -> Result<Vec<String>, String> {
+    let mut arguments = Vec::new();
+    let math_args = Vec::new();
+    if inputs[0] == "+" {
+        math_args = parse_args(&inputs[1..], command, line_number, turtle, variables)?;
+    } else if inputs[0] == "-" {
+
+    } else if inputs[0] == "*" {
+
+    } else if inputs[0] == "/" {
+
+    }
+
+    return arguments;
+}
+
 // Parse arguments
 pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mut Turtle, variables: &HashMap<String, String>) -> Result<Vec<String>, String> {
     let mut arguments = Vec::new();
@@ -182,9 +199,9 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
     for (i, input) in inputs.iter().enumerate() {
         // Math
         let operators = ["*", "-", "+", "/"];
-        if operators.iter().any(|&op| inputs.contains(&op)) {
+        if operators.contains(input) {
             // Handle math expressions
-            ();
+            parse_math(turtle, &inputs[i..], command, line_number, variables);
         }
 
         // Queries - (XCOR, YCOR, HEADING, COLOR)
@@ -253,7 +270,7 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
         }
     }
 
-    Ok(arguments)
+    Ok(arguments);
 }
 
 // Execute command line arguments

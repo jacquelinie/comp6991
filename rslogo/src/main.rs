@@ -73,7 +73,7 @@ fn main() -> Result<(), ()> {
         line_number += 1;
         let mut inputs: Vec<&str> = line.split_whitespace().collect();
 
-        // Handle ']': End of a block
+        // Handle ']': End of a loop
         if inputs[0] == "]" {
             println!("Checking loops...");
             // Close loop in condition_stack
@@ -173,6 +173,15 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
         }
     };
 
-    // println!("Curr arguments: {:?} and {:?}", arguments.get(0), arguments.get(1));
-    return arguments.get(0) == arguments.get(1);
+    // OR
+    // if inputs.contains(&"OR") {
+    //     return (arguments.get(0).copied().unwrap_or(false) || arguments.get(1).copied().unwrap_or(false));
+    // }
+    //  else if inputs.contains(&"AND") {
+    //     return (arguments.get(0).copied().unwrap_or(false) && arguments.get(1).copied().unwrap_or(false));
+    // } else {
+        // EQ
+        return arguments.get(0) == arguments.get(1);
+    // }
+
 }
