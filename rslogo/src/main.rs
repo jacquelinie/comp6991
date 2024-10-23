@@ -1,9 +1,9 @@
 use clap::Parser;
-use unsvg::Image;
 use std::collections::{HashMap, VecDeque};
 use std::process;
+use unsvg::Image;
 mod turtle;
-use turtle::{Turtle, execute_command, parse_args, error_extra_arguments};
+use turtle::{error_extra_arguments, execute_command, parse_args, Turtle};
 
 /// A simple program to parse four arguments using clap.
 #[derive(Parser)]
@@ -37,7 +37,8 @@ fn main() -> Result<(), ()> {
 
     // ========= ASSIGNMENT =========
     // Parse File
-    let file_content = std::fs::read_to_string(&file_path).map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
+    let file_content = std::fs::read_to_string(&file_path)
+        .map_err(|_| eprintln!("File not found: {:?}", &file_path))?;
     let lines: Vec<&str> = file_content.lines().collect();
     let mut line_number: i32 = 0;
     let mut line_increment = 0; // Need line increment because empty lines don't count as 'line_number', but need to continue in the file
@@ -51,7 +52,7 @@ fn main() -> Result<(), ()> {
         let line = lines[line_increment];
         line_increment += 1;
         // Skip empty lines or comments
-        if line.trim().is_empty() || line.starts_with("//")  {
+        if line.trim().is_empty() || line.starts_with("//") {
             continue;
         }
 
@@ -64,10 +65,10 @@ fn main() -> Result<(), ()> {
         if inputs[0] == "]" {
             println!("Checking loops...");
             // Close loop in condition_stack
-            if let Some (execute_loop) = condition_stack.pop() {
+            if let Some(execute_loop) = condition_stack.pop() {
                 // Check loop identity
                 if let Some((line_n, line_i, text)) = loop_stack.pop() {
-                // If while and execute_loop == true, jump back to check
+                    // If while and execute_loop == true, jump back to check
                     if text == *"WHILE" && execute_loop {
                         line_number = line_n - 1;
                         line_increment = line_i - 1;
@@ -75,7 +76,7 @@ fn main() -> Result<(), ()> {
                 } else {
                     eprintln!("Error: Mismatched ']' at line {}", line_number);
                     process::exit(1);
-            }
+                }
             } else {
                 eprintln!("Error: Mismatched ']' at line {}", line_number);
                 process::exit(1);
@@ -85,7 +86,8 @@ fn main() -> Result<(), ()> {
 
         // Handle 'IF EQ' conditions
         if inputs[0] == "IF" {
-            let if_bool = evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "IF");
+            let if_bool =
+                evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "IF");
             println!("Adding IF bool: {if_bool}");
             condition_stack.push(if_bool);
             loop_stack.push((line_number, line_increment, "IF".to_string()));
@@ -94,7 +96,8 @@ fn main() -> Result<(), ()> {
 
         // Handle 'WHILE EQ' loop
         if inputs[0] == "WHILE" {
-            let while_bool = evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "WHILE");
+            let while_bool =
+                evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "WHILE");
             println!("Adding WHILE bool: {while_bool}");
             condition_stack.push(while_bool);
 
@@ -109,7 +112,8 @@ fn main() -> Result<(), ()> {
         }
 
         // Execute Command
-        if let Err(e) = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number) {
+        if let Err(e) = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number)
+        {
             eprintln!("{}", e);
             process::exit(1);
         }
@@ -144,7 +148,13 @@ fn main() -> Result<(), ()> {
 }
 
 // Evaluate the condition for IF and WHILE
-fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut VecDeque<&str>, line_number: &i32, command: &str) -> bool {
+fn evaluate_condition(
+    turtle: &mut Turtle,
+    variables: &HashMap<String, String>,
+    inputs: &mut VecDeque<&str>,
+    line_number: &i32,
+    command: &str,
+) -> bool {
     // Check for bool
     // (e.g., "IF :VARIABLE [")
     println!("CURR INPUTS: {:?}", inputs);
@@ -154,7 +164,15 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
     if !inputs.iter().any(|&input| comparisons.contains(&input)) {
         inputs.pop_front();
         inputs.pop_back();
-        let arguments = match parse_args(inputs, command, line_number, turtle, variables, false, &mut 0) {
+        let arguments = match parse_args(
+            inputs,
+            command,
+            line_number,
+            turtle,
+            variables,
+            false,
+            &mut 0,
+        ) {
             Ok(args) => args,
             Err(e) => {
                 eprintln!("{}", e);
@@ -173,7 +191,15 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
     }
     let instructions: Vec<&str> = inputs.drain(0..2).collect(); // remove "IF / WHILE  EQ / AND / OR"
     inputs.pop_back(); // remove "["
-    let arguments = match parse_args(inputs, command, line_number, turtle, variables, false, &mut 0) {
+    let arguments = match parse_args(
+        inputs,
+        command,
+        line_number,
+        turtle,
+        variables,
+        false,
+        &mut 0,
+    ) {
         Ok(args) => args,
         Err(e) => {
             eprintln!("{}", e);
@@ -191,12 +217,11 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
     } else if instructions.contains(&"AND") {
         // AND
         v1.map(|s| s == "true").unwrap_or(false) && v2.map(|s| s == "true").unwrap_or(false)
-    } else if instructions.contains (&"NE") {
+    } else if instructions.contains(&"NE") {
         // NE
         v1 != v2
     } else {
         // EQ
         v1 == v2
     }
-
 }
