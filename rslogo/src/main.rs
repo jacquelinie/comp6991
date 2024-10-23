@@ -1,3 +1,6 @@
+/// Main function for a Logo Parser in Rust
+/// Use with cargo run INSTRUCTION_FILE_PATH OUTPUT_FILE_PATH Height Width
+
 use clap::Parser;
 use std::collections::{HashMap, VecDeque};
 use std::process;
@@ -289,5 +292,98 @@ fn parse_bool(value: Option<&String>, line_number: &i32) -> Result<bool, String>
             "Error: Missing boolean value on line {}",
             line_number
         )),
+    }
+}
+
+
+// ============== Tests for main function ===============
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_penup_command() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line = "PENUP";
+        let line_number = 1;
+
+        let result = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number);
+        assert!(result.is_ok());
+        assert!(!turtle.pen_down); // Assuming is_pen_up() checks if the pen is up
+    }
+
+    #[test]
+    fn test_forward_command_valid() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line = "FORWARD \"50";
+        let line_number = 2;
+
+        let result = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number);
+        assert!(result.is_ok());
+        // Validate turtle position after moving forward
+        assert_eq!(turtle.x, 100); // Set expected_x_position based on initial state and movement
+        assert_eq!(turtle.y, 50); // Set expected_y_position based on initial state and movement
+    }
+
+    #[test]
+    fn test_forward_command_invalid_argument() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line = "FORWARD \"not_a_number";
+        let line_number = 3;
+
+        let result = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Drawing requires an integer argument"));
+    }
+
+    #[test]
+    fn test_make_command() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line = "MAKE \"test \"10";
+        let line_number = 4;
+
+        let result = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number);
+        assert!(result.is_ok());
+        assert_eq!(variables.get("test").unwrap(), "10");
+    }
+
+    #[test]
+    fn test_condition_evaluation() {
+        let mut turtle = Turtle::new(200, 200);
+        let variables = HashMap::new();
+        let mut inputs = VecDeque::from(vec!["IF", "EQ", "XCOR", "\"50", "["]);
+        let line_number = 5;
+
+        let result = evaluate_condition(&mut turtle, &variables, &mut inputs, &line_number, "IF");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_bool_valid() {
+        let line_number = 6;
+        let result_true = parse_bool(Some(&"true".to_string()), &line_number);
+        assert!(result_true.is_ok());
+        assert!(result_true.unwrap());
+
+        let result_false = parse_bool(Some(&"false".to_string()), &line_number);
+        assert!(result_false.is_ok());
+        assert!(!result_false.unwrap());
+    }
+
+    #[test]
+    fn test_parse_bool_invalid() {
+        let line_number = 7;
+        let result = parse_bool(Some(&"not_a_bool".to_string()), &line_number);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid boolean value"));
     }
 }
