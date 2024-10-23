@@ -14,6 +14,14 @@ pub struct Turtle {
 
 // Initialise turtle
 impl Turtle {
+    /// Creates a new `Turtle` starting at the center of the screen with a default heading and color.
+    ///
+    /// # Parameters:
+    /// - `width`: The width of the drawing area.
+    /// - `height`: The height of the drawing area.
+    ///
+    /// # Returns:
+    /// A new Turtle instance.
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             x: width as i32 / 2,
@@ -27,93 +35,134 @@ impl Turtle {
 
     // Make pen up
     pub fn pen_up(&mut self) {
-        println!("Pen up");
         self.pen_down = false;
     }
 
     // Make pen down
     pub fn pen_down(&mut self) {
-        println!("Pen down");
         self.pen_down = true;
     }
 
-    // Move turtle forward
+    /// Moves the turtle forward by a given distance.
+    ///
+    /// # Parameters:
+    /// - `distance`: The distance to move the turtle.
+    /// - `image`: The image on which the turtle is drawing.
+    ///
+    /// # Errors:
+    /// Returns an error if drawing the line on the image fails.
     pub fn move_forward(&mut self, distance: i32, image: &mut Image) {
-        println!("Moving forward by {}", distance);
         let (new_x, new_y) = unsvg::get_end_coordinates(self.x, self.y, self.heading, distance);
         if self.pen_down {
             if let Err(e) =
                 image.draw_simple_line(self.x, self.y, self.heading, distance, self.pen_color)
             {
-                println!("Error occurred when drawing image: {}", e);
+                eprintln!("Error: Error occurred when drawing: {}", e);
+                process::exit(1);
             };
         }
         self.x = new_x;
         self.y = new_y;
-        println!("Current coord: {new_x}, {new_y}");
     }
 
-    // Move turtle backward
+    /// Moves the turtle backward by a given distance.
+    ///
+    /// # Parameters:
+    /// - `distance`: The distance to move the turtle backward.
+    /// - `image`: The image on which the turtle is drawing.
+    ///
+    /// # Errors:
+    /// Returns an error if drawing the line on the image fails.
     pub fn move_back(&mut self, distance: i32, image: &mut Image) {
         self.move_forward(-distance, image);
     }
 
-    // Turn turtle
+    /// Rotates the turtle by a given number of degrees.
+    ///
+    /// # Parameters:
+    /// - `degrees`: The number of degrees to turn the turtle.
     pub fn turn(&mut self, degrees: i32) {
-        println!("Turning by: {degrees}");
         self.heading = (self.heading + degrees) % 360;
     }
 
-    // Set heading of turtle
+    /// Sets the turtle's heading to a specific value.
+    ///
+    /// # Parameters:
+    /// - `degrees`: The heading to set, in degrees.
     pub fn set_heading(&mut self, degrees: i32) {
-        println!("Setting heading: {degrees}");
         self.heading = (degrees) % 360;
     }
 
-    // Set x coord
+    /// Sets the turtle's X-coordinate.
+    ///
+    /// # Parameters:
+    /// - `position`: The X-coordinate to set.
     pub fn set_x(&mut self, position: i32) {
-        println!("Setting x: {position}");
         self.x = position;
     }
 
-    // Set y coord
+    /// Sets the turtle's Y-coordinate.
+    ///
+    /// # Parameters:
+    /// - `position`: The Y-coordinate to set.
     pub fn set_y(&mut self, position: i32) {
-        println!("Setting y: {position}");
         self.y = position;
     }
 
-    // Travel left
+    /// Moves the turtle left by a given distance.
+    ///
+    /// # Parameters:
+    /// - `distance`: The distance to move left.
+    /// - `image`: The image on which the turtle is drawing.
+    ///
+    /// # Errors:
+    /// Returns an error if drawing the line on the image fails.
     pub fn left(&mut self, distance: i32, image: &mut Image) {
-        println!("Traveling left: {distance}");
         let curr_heading = self.heading;
         self.heading = (self.heading - 90) % 360;
         self.move_forward(distance, image);
         self.heading = curr_heading;
     }
 
-    // Travel right
+    /// Moves the turtle right by a given distance.
+    ///
+    /// # Parameters:
+    /// - `distance`: The distance to move right.
+    /// - `image`: The image on which the turtle is drawing.
+    ///
+    /// # Errors:
+    /// Returns an error if drawing the line on the image fails.
     pub fn right(&mut self, distance: i32, image: &mut Image) {
-        println!("Traveling right: {distance}");
         let curr_heading = self.heading;
         self.heading = (self.heading + 90) % 360;
         self.move_forward(distance, image);
         self.heading = curr_heading;
     }
 
-    // Set pen color (unsvg uses color, hence to remain consistent I spelt colour as color)
+    /// Sets the turtle's pen color using a color code.
+    ///
+    /// # Parameters:
+    /// - `color_code`: The color code (0-15) to set the pen color to.
+    ///
+    /// # Returns:
+    /// - `Ok(())` if the color is set successfully.
+    /// - `Err(String)` if the color code is invalid.
     pub fn set_pen_color(&mut self, color_code: usize) -> Result<(), String> {
-        println!("Setting pen color: {}", color_code);
         if color_code < 16 {
             self.pen_color = COLORS[color_code];
             Ok(())
         } else {
-            Err(format!("Invalid color code: {}", color_code)) // TODO: Fix errors to return Err(())
+            Err(format!("Error: Invalid color code: {}", color_code)) // TODO: Fix errors to return Err(())
         }
     }
 
-    // Make variable
+    /// Creates or updates a variable with a given value.
+    ///
+    /// # Parameters:
+    /// - `var_name`: The name of the variable to create or update.
+    /// - `var_val`: The value to assign to the variable.
+    /// - `variables`: The hash map storing all variables.
     pub fn make(&mut self, var_name: &str, var_val: &str, variables: &mut HashMap<String, String>) {
-        println!("Making variable {}: {}", var_name, var_val);
         // Check for make variable variable case
         if var_val.parse::<i32>().is_err() {
             variables.insert(var_val.to_string(), var_name.to_string());
@@ -122,13 +171,17 @@ impl Turtle {
     }
 }
 
-// If there are extra arguments, return error
+/// Handles the case when extra arguments are provided for a command.
+///
+/// # Parameters:
+/// - `inputs`: The deque of inputs provided.
+/// - `arguments`: The list of parsed arguments.
+/// - `num_inputs`: The expected number of inputs.
 pub fn error_extra_arguments(
     inputs: &mut VecDeque<&str>,
     arguments: &Vec<String>,
     num_inputs: usize,
 ) {
-    println!("{:?}", arguments);
     // Check for math in inputs
     if arguments.len() <= num_inputs {
         return;
@@ -143,8 +196,15 @@ pub fn error_extra_arguments(
     process::exit(1);
 }
 
-// Match Queries and return value
-pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
+/// Parse all queries involving XCOR, YCOR, HEADING and COLOR.
+///
+/// # Parameters:
+/// - `turtle`: The turtle instance
+/// - `input`: The inputted query
+pub fn parse_queries(
+    turtle: &mut Turtle,
+    input: &str,
+) -> i32 {
     match input {
         "XCOR" => turtle.x,
         "YCOR" => turtle.y,
@@ -154,7 +214,20 @@ pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     }
 }
 
-// Parse all math related expressions (+, -, *, /, GT, LT, EQ, NE, AND, OR)
+/// Parses and evaluates mathematical expressions.
+///
+/// # Arguments
+/// * `turtle` - A mutable reference to the `Turtle` object.
+/// * `instruction` - The math operation or comparison to be executed.
+/// * `inputs` - A mutable deque of input strings.
+/// * `command` - The command currently being executed.
+/// * `line_number` - Reference to the current line number for error reporting.
+/// * `variables` - A hashmap of variables and their values.
+/// * `inputs_i` - A mutable reference to the current input index.
+///
+/// # Returns
+/// * `Result<String, String>` - The result of the mathematical operation or a string error.
+/// * Err(String) - If there is an invalid bool, missing arguments, invalid arguments or unknown operators.
 pub fn parse_math(
     turtle: &mut Turtle,
     instruction: &str,
@@ -164,7 +237,6 @@ pub fn parse_math(
     variables: &HashMap<String, String>,
     inputs_i: &mut i32,
 ) -> Result<String, String> {
-    println!("Math inputs: {:?}", inputs);
     let math_args = parse_args(
         inputs,
         command,
@@ -174,7 +246,6 @@ pub fn parse_math(
         true,
         inputs_i,
     )?;
-    println!("Curr math: {} {:?}", instruction, math_args);
     let v1_str = math_args
         .first()
         .ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
@@ -182,13 +253,14 @@ pub fn parse_math(
         .get(1)
         .ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
 
-    // Check for comparison
+    // Check for comparisons
     let math_comparisons = ["EQ", "NE", "AND", "OR"];
     if math_comparisons.contains(&instruction) {
         let result = match instruction {
             "EQ" => v1_str == v2_str,
             "NE" => v1_str != v2_str,
             "AND" => {
+                // AND bools
                 let v1_bool = v1_str
                     .parse::<bool>()
                     .map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
@@ -198,10 +270,11 @@ pub fn parse_math(
                 return Ok((v1_bool && v2_bool).to_string());
             }
             "OR" => {
-                let v1_bool = v1_str
+                // OR bools
+                let v1_bool: bool = v1_str
                     .parse::<bool>()
                     .map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
-                let v2_bool = v1_str
+                let v2_bool: bool = v1_str
                     .parse::<bool>()
                     .map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
                 return Ok((v1_bool || v2_bool).to_string());
@@ -216,7 +289,7 @@ pub fn parse_math(
         return Ok(result.to_string());
     }
 
-    // Check for
+    // Check for normal math operations
     let math_operations = ["+", "-", "*", "/", "GT", "LT"];
     if math_operations.contains(&instruction) {
         let v1: i32 = v1_str.parse().map_err(|_| {
@@ -266,7 +339,20 @@ pub fn parse_math(
     ))
 }
 
-// Parse each arguments from inputs
+/// Parses command-line arguments from the input.
+///
+/// # Arguments
+/// * `inputs` - A mutable deque of input strings to be parsed.
+/// * `command` - The command currently being executed.
+/// * `line_number` - Reference to the current line number for error reporting.
+/// * `turtle` - A mutable reference to the `Turtle` object.
+/// * `variables` - A hashmap of variables and their values.
+/// * `parsing_math` - A flag to indicate if the function is parsing math expressions.
+/// * `inputs_i` - A mutable reference to the current input index.
+///
+/// # Returns
+/// * `Result<Vec<String>, String>` - A vector of parsed arguments or an error string.
+/// * Err(String) - If there are invalid arguments, missing arguments or unknown operators.
 pub fn parse_args(
     inputs: &mut VecDeque<&str>,
     command: &str,
@@ -292,7 +378,6 @@ pub fn parse_args(
         let operators = ["*", "-", "+", "/", "GT", "LT", "OR", "AND", "EQ", "NE"];
         if operators.contains(&input) {
             // Handle math expressions
-            println!("inserting inputs: {:?}", inputs);
             let result: String = parse_math(
                 turtle,
                 input,
@@ -348,12 +433,12 @@ pub fn parse_args(
                 ))?
                 .clone();
             // Parse value, check for true and false
-            println!("Curr :variable value: {}", value);
             if value.parse::<i32>().is_err() {
                 if value == "TRUE" || value == "true" {
                     value = true.to_string();
                 } else if value == "FALSE" || value == "false" {
                     value = false.to_string();
+                // Get value from variables
                 } else {
                     value = variables
                         .get(&value)
@@ -385,7 +470,20 @@ pub fn parse_args(
     Ok(arguments)
 }
 
-// Execute command line arguments
+/// Executes a command based on parsed input.
+///
+/// # Arguments
+/// * `turtle` - A mutable reference to the `Turtle` object.
+/// * `image` - A mutable reference to the image where the turtle draws.
+/// * `variables` - A mutable hashmap of variables and their values.
+/// * `line` - The line of code being executed.
+/// * `line_number` - Reference to the current line number for error reporting.
+///
+/// # Returns
+/// * `Result<(), String>` - Ok if the command is executed successfully, otherwise an error string.
+///
+/// # Errors
+/// *
 pub fn execute_command(
     turtle: &mut Turtle,
     image: &mut Image,
@@ -425,7 +523,6 @@ pub fn execute_command(
         }
         "FORWARD" => {
             // Forward dist
-            println!("{:?}", arguments);
             error_extra_arguments(&mut og_inputs, &arguments, 1);
             let distance_str = arguments
                 .first()
@@ -555,7 +652,7 @@ pub fn execute_command(
         }
         // ================ TASK 2 ================
         "MAKE" => {
-            // Make var_name value
+            // Make var_name value | Make hello 5
             error_extra_arguments(&mut og_inputs, &arguments, 2);
             let var_name_str = arguments
                 .first()
@@ -577,6 +674,8 @@ pub fn execute_command(
             let v2_str = arguments
                 .get(2)
                 .ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+
+            // Parse value strings
             let v1: i32 = v1_str.parse().map_err(|_| {
                 format!(
                     "Error: Error on line {}: Making variable requires a value.",
@@ -589,6 +688,8 @@ pub fn execute_command(
                     line_number
                 )
             })?;
+
+            // Overwrite old variable
             turtle.make(var_name_str, &(v1 + v2).to_string(), variables);
         }
         _ => {
