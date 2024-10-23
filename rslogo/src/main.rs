@@ -159,7 +159,6 @@ fn main() -> Result<(), ()> {
 // Evaluate the condition for IF EQ
 fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut Vec<&str>, line_number: &i32, command: &str) -> bool {
     // Parse the condition (e.g., "IF EQ XCOR 50")
-    error_extra_arguments(&inputs, 5);
     if inputs.len() < 5 {
         eprintln!("Error: Error on line {}: Empty line", line_number);
         process::exit(1);
@@ -172,6 +171,7 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
             process::exit(1);
         }
     };
+    error_extra_arguments(&inputs, &arguments, 5);
 
     // OR
     // if inputs.contains(&"OR") {
