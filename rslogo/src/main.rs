@@ -203,15 +203,21 @@ fn evaluate_condition(
             variables,
             false,
             &mut 0,
-        ).map_err(|e| format!("Error parsing arguments: {}", e))?;
+        )
+        .map_err(|e| format!("Error parsing arguments: {}", e))?;
 
-        let first_arg = arguments.first().ok_or_else(|| format!("Error: No argument provided on line {}", line_number))?;
+        let first_arg = arguments
+            .first()
+            .ok_or_else(|| format!("Error: No argument provided on line {}", line_number))?;
 
         // Check if the argument is a valid boolean
         match first_arg.as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(format!("Error: Invalid boolean value '{}' on line {}", first_arg, line_number)),
+            _ => Err(format!(
+                "Error: Invalid boolean value '{}' on line {}",
+                first_arg, line_number
+            )),
         }
     } else {
         // Parse the condition (e.g., "IF EQ XCOR 50 [")
@@ -229,7 +235,8 @@ fn evaluate_condition(
             variables,
             false,
             &mut 0,
-        ).map_err(|e| format!("Error parsing arguments: {}", e))?;
+        )
+        .map_err(|e| format!("Error parsing arguments: {}", e))?;
         error_extra_arguments(inputs, &arguments, 5);
 
         let v1 = arguments.first();
@@ -253,7 +260,10 @@ fn evaluate_condition(
             // EQ
             Ok(v1 == v2)
         } else {
-            Err(format!("Error: Invalid comparison operator on line {}", line_number))
+            Err(format!(
+                "Error: Invalid comparison operator on line {}",
+                line_number
+            ))
         }
     }
 }
@@ -267,14 +277,17 @@ fn evaluate_condition(
 /// Returns:
 /// * Result<bool, String> - If the value parses as a bool
 /// * Err(String) - If the value is not a bool
-fn parse_bool(
-    value: Option<&String>,
-    line_number: &i32
-) -> Result<bool, String> {
+fn parse_bool(value: Option<&String>, line_number: &i32) -> Result<bool, String> {
     match value {
         Some(s) if s == "true" => Ok(true),
         Some(s) if s == "false" => Ok(false),
-        Some(s) => Err(format!("Error: Invalid boolean value '{}' on line {}", s, line_number)),
-        None => Err(format!("Error: Missing boolean value on line {}", line_number)),
+        Some(s) => Err(format!(
+            "Error: Invalid boolean value '{}' on line {}",
+            s, line_number
+        )),
+        None => Err(format!(
+            "Error: Missing boolean value on line {}",
+            line_number
+        )),
     }
 }

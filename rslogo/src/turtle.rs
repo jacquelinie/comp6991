@@ -152,7 +152,7 @@ impl Turtle {
             self.pen_color = COLORS[color_code];
             Ok(())
         } else {
-            Err(format!("Error: Invalid color code: {}", color_code)) // TODO: Fix errors to return Err(())
+            Err(format!("Error: Invalid color code: {}", color_code))
         }
     }
 
@@ -177,11 +177,7 @@ impl Turtle {
 /// - `inputs`: The deque of inputs provided.
 /// - `arguments`: The list of parsed arguments.
 /// - `num_inputs`: The expected number of inputs.
-pub fn error_extra_arguments(
-    inputs: &mut VecDeque<&str>,
-    arguments: &Vec<String>,
-    num_inputs: usize,
-) {
+pub fn error_extra_arguments(inputs: &mut VecDeque<&str>, arguments: &[String], num_inputs: usize) {
     // Check for math in inputs
     if arguments.len() <= num_inputs {
         return;
@@ -201,10 +197,7 @@ pub fn error_extra_arguments(
 /// # Parameters:
 /// - `turtle`: The turtle instance
 /// - `input`: The inputted query
-pub fn parse_queries(
-    turtle: &mut Turtle,
-    input: &str,
-) -> i32 {
+pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     match input {
         "XCOR" => turtle.x,
         "YCOR" => turtle.y,
@@ -592,7 +585,7 @@ pub fn execute_command(
             turtle.pen_color_code = color_code.try_into().unwrap_or_else(|_| {
                 panic!("The usize value is too large to fit into an i32");
             });
-            turtle.set_pen_color(color_code)?; // TODO: if let Err =
+            turtle.set_pen_color(color_code)?;
         }
         "TURN" => {
             // Turn degrees
@@ -700,4 +693,344 @@ pub fn execute_command(
         }
     }
     Ok(())
+}
+
+// =========== Unit Tests to test turtle functionality ============
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use unsvg::Image;
+
+    #[test]
+    fn test_turtle_initialization() {
+        let width = 800;
+        let height = 600;
+        let turtle = Turtle::new(width, height);
+        assert_eq!(turtle.x, width as i32 / 2);
+        assert_eq!(turtle.y, height as i32 / 2);
+        assert_eq!(turtle.heading, 0);
+        assert!(!turtle.pen_down);
+        assert_eq!(turtle.pen_color_code, 7);
+    }
+
+    #[test]
+    fn test_move_forward_pen_down() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        turtle.pen_down = true;
+        turtle.move_forward(100, &mut image);
+
+        assert_eq!(turtle.x, 100);
+        assert_eq!(turtle.y, 0);
+    }
+
+    #[test]
+    fn test_turn() {
+        let mut turtle = Turtle::new(200, 200);
+        turtle.turn(90);
+        assert_eq!(turtle.heading, 90);
+
+        turtle.turn(270);
+        assert_eq!(turtle.heading, 0);
+    }
+
+    #[test]
+    fn test_set_pen_color() {
+        let mut turtle = Turtle::new(200, 200);
+        assert!(turtle.set_pen_color(3).is_ok());
+        assert!(turtle.set_pen_color(16).is_err());
+    }
+
+    #[test]
+    fn test_make_variable() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut variables = HashMap::new();
+
+        turtle.make("x", "10", &mut variables);
+        assert_eq!(variables.get("x"), Some(&"10".to_string()));
+
+        turtle.make("y", "20", &mut variables);
+        assert_eq!(variables.get("y"), Some(&"20".to_string()));
+    }
+
+    // =========== Test for commands ============
+    #[test]
+    fn test_execute_command_penup() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "PENUP",
+            &line_number
+        )
+        .is_ok());
+        assert!(!turtle.pen_down);
+    }
+
+    #[test]
+    fn test_execute_command_pendown() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "PENDOWN",
+            &line_number
+        )
+        .is_ok());
+        assert!(turtle.pen_down);
+    }
+
+    #[test]
+    fn test_execute_command_forward() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "FORWARD \"50",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.x, 100);
+        assert_eq!(turtle.y, 50);
+    }
+
+    #[test]
+    fn test_execute_command_back() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert_eq!(turtle.y, 100);
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "BACK \"25",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.y, 125);
+    }
+
+    #[test]
+    fn test_execute_command_left() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert_eq!(turtle.x, 100);
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "LEFT \"50",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.x, 50);
+    }
+
+    #[test]
+    fn test_execute_command_right() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert_eq!(turtle.x, 100);
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "RIGHT \"50",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.x, 150)
+    }
+
+    #[test]
+    fn test_execute_command_setpencolor() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "SETPENCOLOR \"1",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.pen_color_code, 1);
+    }
+
+    #[test]
+    fn test_execute_command_turn() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "TURN \"90",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.heading, 90);
+    }
+
+    #[test]
+    fn test_execute_command_setheading() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "SETHEADING \"180",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.heading, 180);
+    }
+
+    #[test]
+    fn test_execute_command_setx() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "SETX \"100",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.x, 100);
+    }
+
+    #[test]
+    fn test_execute_command_sety() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "SETY \"100",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(turtle.y, 100);
+    }
+
+    #[test]
+    fn test_execute_command_make() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "MAKE \"x \"10",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(variables.get("x"), Some(&"10".to_string()));
+    }
+
+    #[test]
+    fn test_execute_command_addassign() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        turtle.make("a", "5", &mut variables);
+
+        assert!(execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "ADDASSIGN \"a \"50",
+            &line_number
+        )
+        .is_ok());
+        assert_eq!(variables.get("a"), Some(&"55".to_string()));
+    }
+
+    #[test]
+    fn test_execute_command_invalid_command() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        let result = execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "FORWARD INVALIDCOMMAND",
+            &line_number,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Error: Error on line 0, Unknown command: INVALIDCOMMAND"
+        );
+    }
+
+    #[test]
+    fn test_execute_command_missing_command() {
+        let mut turtle = Turtle::new(200, 200);
+        let mut image = Image::new(200, 200);
+        let mut variables = HashMap::new();
+        let line_number = 0;
+
+        let result = execute_command(
+            &mut turtle,
+            &mut image,
+            &mut variables,
+            "BACK",
+            &line_number,
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Error: Error on line 0: Empty line");
+    }
 }
