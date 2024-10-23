@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <defs/>
+    <path fill="#000000" stroke="none" d="M 0 0 L 200 0 L 200 200 L 0 200 Z"/>
+    <path fill="none" stroke="#ffffff" d="M -10 -10 L -10 -5"/>
+    <path fill="none" stroke="#ffffff" d="M -10 -5 L -5 -5"/>
+    <path fill="none" stroke="#ffffff" d="M -5 -5 L -5 0"/>
+    <path fill="none" stroke="#ffffff" d="M -5 0 L 0 0"/>
+    <path fill="none" stroke="#ffffff" d="M 0 0 L 0 5"/>
+    <path fill="none" stroke="#ffffff" d="M 0 5 L 5 5"/>
+    <path fill="none" stroke="#ffffff" d="M 5 5 L 5 10"/>
+    <path fill="none" stroke="#ffffff" d="M 5 10 L 10 10"/>
+    <path fill="none" stroke="#ffffff" d="M 10 10 L 10 15"/>
+    <path fill="none" stroke="#ffffff" d="M 10 15 L 15 15"/>
+</svg>
