@@ -68,7 +68,7 @@ fn main() -> Result<(), ()> {
                 // Check loop identity
                 if let Some((line_n, line_i, text)) = loop_stack.pop() {
                 // If while and execute_loop == true, jump back to check
-                    if text == "WHILE".to_string() && execute_loop == true {
+                    if text == *"WHILE" && execute_loop {
                         line_number = line_n - 1;
                         line_increment = line_i - 1;
                     }
@@ -162,7 +162,7 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
             }
         };
         println!("SMALL ARGUMENTS: {:?}", arguments);
-        return arguments.get(0).map(|s| s == "true").unwrap_or(false);
+        return arguments.first().map(|s| s == "true").unwrap_or(false);
     }
 
     // Parse the condition
@@ -181,24 +181,22 @@ fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, 
         }
     };
     error_extra_arguments(inputs, &arguments, 5);
-    let v1 = arguments.get(0);
+    let v1 = arguments.first();
     let v2 = arguments.get(1);
 
     // Check the equality
     if instructions.contains(&"OR") {
         // OR
-        println!("In OR loop: {:?}", arguments);
-        return v1.map(|s| s == "true").unwrap_or(false) || v2.map(|s| s == "true").unwrap_or(false);
+        v1.map(|s| s == "true").unwrap_or(false) || v2.map(|s| s == "true").unwrap_or(false)
     } else if instructions.contains(&"AND") {
         // AND
-        println!("In OR loop: {:?}", arguments);
-        return v1.map(|s| s == "true").unwrap_or(false) && v2.map(|s| s == "true").unwrap_or(false);
+        v1.map(|s| s == "true").unwrap_or(false) && v2.map(|s| s == "true").unwrap_or(false)
     } else if instructions.contains (&"NE") {
         // NE
-        return v1 != v2;
+        v1 != v2
     } else {
         // EQ
-        return v1 == v2;
+        v1 == v2
     }
 
 }

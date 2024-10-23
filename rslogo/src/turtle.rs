@@ -113,7 +113,7 @@ impl Turtle {
     pub fn make(&mut self, var_name: &str, var_val: &str, variables: &mut HashMap<String, String>) {
         println!("Making variable {}: {}", var_name, var_val);
         // Check for make variable variable case
-        if !var_val.parse::<i32>().is_ok() {
+        if var_val.parse::<i32>().is_err() {
             variables.insert(var_val.to_string(), var_name.to_string());
         }
         variables.insert(var_name.to_string(), var_val.to_string());
@@ -154,7 +154,7 @@ pub fn parse_math(turtle: &mut Turtle, instruction: &str, inputs: &mut VecDeque<
     println!("Math inputs: {:?}", inputs);
     let math_args = parse_args(inputs, command, line_number, turtle, variables, true, inputs_i)?;
     println!("Curr math: {} {:?}", instruction, math_args);
-    let v1_str = math_args.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+    let v1_str = math_args.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
     let v2_str = math_args.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
 
     // Check for comparison
@@ -334,31 +334,31 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         "FORWARD" => { // Forward dist
             println!("{:?}", arguments);
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let distance_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.move_forward(distance, image);
         }
         "BACK" => { // Back dist
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let distance_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.move_back(distance, image);
         }
         "LEFT" => { // Left dist
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let distance_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.left(distance, image);
         }
         "RIGHT" => { // Right dist
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let distance_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.right(distance, image);
         }
         "SETPENCOLOR" => { // Setpencolor color
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let color = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let color = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let color_code: usize = color.parse().map_err(|_| format!("Error: Error on line {}: Invalid color: {}", line_number, color))?;
             turtle.pen_color_code = color_code.try_into().unwrap_or_else(|_| {
                 panic!("The usize value is too large to fit into an i32"); });
@@ -366,38 +366,38 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
         }
         "TURN" => { // Turn degrees
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let degree_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let degree_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let degree: i32 = degree_str.parse().map_err(|_| format!("Error: Error on line {}: Turning requires an integer.", line_number))?;
             turtle.turn(degree);
         }
         "SETHEADING" => { // Setheading degrees
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let degree_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let degree_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let degree: i32 = degree_str.parse().map_err(|_| format!("Error: Error on line {}: Setting heading requires an integer.", line_number))?;
             turtle.set_heading(degree);
         }
         "SETX" => { // Setx x
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let position_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let position_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_x(position);
         }
         "SETY" => { // Sety y
             error_extra_arguments(&mut og_inputs, &arguments, 1);
-            let position_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let position_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_y(position);
         }
         // ================ TASK 2 ================
         "MAKE" => { // Make var_name value
             error_extra_arguments(&mut og_inputs, &arguments, 2);
-            let var_name_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let var_name_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let var_val_str = arguments.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             turtle.make(var_name_str, var_val_str, variables);
         }
         "ADDASSIGN" => { // AddAssign v1 v2 | ADDASSIGN "forwardDist :dist | arguments = [val_name, v1, v2]
             error_extra_arguments(&mut og_inputs, &arguments, 3);
-            let var_name_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+            let var_name_str = arguments.first().ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let v1_str = arguments.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let v2_str = arguments.get(2).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let v1: i32 = v1_str.parse().map_err(|_| format!("Error: Error on line {}: Making variable requires a value.", line_number))?;
