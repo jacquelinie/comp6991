@@ -1,6 +1,6 @@
 use unsvg::{Image, COLORS};
 use std::process;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 // Turtle struct to store information
 pub struct Turtle {
@@ -118,38 +118,17 @@ impl Turtle {
         } else {
             variables.insert(var_val.to_string(), var_name.to_string());
         }
-        // match var_name {
-        //     "XCOR" => {
-        //         variables.insert((self.x).to_string(), var_val.to_string());
-        //         self.x = val;
-        //     }
-        //     "YCOR" => {
-        //         variables.insert((self.y).to_string(), var_val.to_string());
-        //         self.y = val;
-        //     }
-        //     "HEADING" => {
-        //         variables.insert((self.heading).to_string(), var_val.to_string());
-        //         self.heading = val;
-        //     }
-        //     "COLOR" => {
-        //         variables.insert((self.pen_color_code).to_string(), var_val.to_string());
-        //         self.pen_color_code = val;
-        //         let color_code: usize = val.try_into().unwrap_or_else(|_| {
-        //         panic!("The usize value is too large to fit into an i32"); });
-        //         self.pen_color = COLORS[color_code];
-        //     }
-        //     _ => {}
         variables.insert(var_name.to_string(), var_val.to_string());
     }
 }
 
 // If there are extra arguments, return error
-pub fn error_extra_arguments(inputs: &Vec<&str>, num_inputs: usize) {
+pub fn error_extra_arguments(inputs: &mut VecDeque<&str>, arguments: &Vec<String>, num_inputs: usize) {
     // Check for math in inputs
-    if inputs.len() <= num_inputs {
+    if arguments.len() <= num_inputs {
         return;
     }
-    let extra_args = &inputs[num_inputs..];
+    let extra_args: Vec<&str> = inputs.drain(num_inputs..).collect();
     let extra_args_debug: Vec<String> = extra_args.iter().map(|arg| format!("{:?}", arg)).collect();
     let extra_args_str = extra_args_debug.join(", "); // Format Arguments
     eprintln!("Error: Error: Extra arguments: [{}]", extra_args_str);
@@ -175,21 +154,91 @@ pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     }
 }
 
+pub fn parse_math(turtle: &mut Turtle, instruction: &str, inputs: &mut VecDeque<&str>, command: &str, line_number: &i32,
+    variables: &HashMap<String, String>, inputs_i: &mut i32) -> Result<String, String> {
+    println!("Math inputs: {:?}", inputs);
+    let math_args = parse_args(inputs, command, line_number, turtle, variables, true, inputs_i)?;
+    println!("Curr math: {} {:?}", instruction, math_args);
+    let v1_str = math_args.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+    let v2_str = math_args.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
+
+    // Check for comparison
+    let math_comparisons = ["EQ", "NE", "AND", "OR"];
+    if math_comparisons.contains(&instruction) {
+        let result = match instruction {
+            "EQ" => v1_str == v2_str,
+            "NE" => v1_str != v2_str,
+            "AND" => {
+                let v1_bool = v1_str.parse::<bool>().map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
+                let v2_bool = v1_str.parse::<bool>().map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
+                return Ok((v1_bool && v2_bool).to_string());
+            }
+            "OR" => {
+                let v1_bool = v1_str.parse::<bool>().map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
+                let v2_bool = v1_str.parse::<bool>().map_err(|_| format!("Invalid boolean string: {}", v1_str))?;
+                return Ok((v1_bool || v2_bool).to_string());
+            }
+            _ => return Err(format!("Error: Error on line {}, Unknown operator: {}", line_number, instruction)),
+        };
+        return Ok(result.to_string());
+    }
+
+    let math_operations = ["+", "-", "*", "/", "GT", "LT"];
+    if math_operations.contains(&instruction) {
+        let v1: i32 = v1_str.parse().map_err(|_| format!("Error: Error on line {}: Math requires a value.", line_number))?;
+        let v2: i32 = v2_str.parse().map_err(|_| format!("Error: Error on line {}: Math requires a value.", line_number))?;
+        if instruction == "GT" {
+        return Ok((v1 > v2).to_string());
+        }
+        if instruction == "LT" {
+            return Ok((v1 < v2).to_string());
+        }
+        let result = match instruction {
+            "+" => v1 + v2,
+            "-" => v1 - v2,
+            "*" => v1 * v2,
+            "/" => {
+                // Check for division by zero
+                if v2 == 0 {
+                    return Err(format!("Error: Error on line {}: Cannot divide by zero", line_number));
+                }
+                return Ok((v1 / v2).to_string());
+            }
+            _ => return Err(format!("Error: Error on line {}, Unknown operator: {}", line_number, instruction)),
+        };
+       return Ok(result.to_string());
+    }
+    return Err(format!("Error: Error on line {}, Unknown operator: {}", line_number, instruction));
+}
+
 // Parse arguments
-pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mut Turtle, variables: &HashMap<String, String>) -> Result<Vec<String>, String> {
+pub fn parse_args(inputs: &mut VecDeque<&str>, command: &str, line_number: &i32, turtle: &mut Turtle, variables: &HashMap<String, String>,
+    parsing_math: bool, inputs_i: &mut i32) -> Result<Vec<String>, String> {
     let mut arguments = Vec::new();
 
-    for (i, input) in inputs.iter().enumerate() {
+    while !inputs.is_empty() {
+        println!("{inputs_i}");
+        println!("Curr inputs: {:?}", inputs);
+        println!("Curr arguments: {:?}", arguments);
+        println!("Curr variables: {:?}", variables);
+        // Check that math is fulfilled:
+        if parsing_math && arguments.len() == 2 {
+            return Ok(arguments);
+        }
+
+        let input: &str = inputs.pop_front().expect("Expected a &str input, but inputs is empty.");
         // Math
-        let operators = ["*", "-", "+", "/"];
-        if operators.iter().any(|&op| inputs.contains(&op)) {
+        let operators = ["*", "-", "+", "/", "GT", "LT", "OR", "AND", "EQ", "NE"];
+        if operators.contains(&input) {
             // Handle math expressions
-            ();
+            println!("inserting inputs: {:?}", inputs);
+            let result: String = parse_math(turtle, input, inputs, command, line_number, variables, inputs_i)?;
+            arguments.push(result);
         }
 
         // Queries - (XCOR, YCOR, HEADING, COLOR)
-        else if *input == "XCOR" || *input == "YCOR" || *input == "HEADING" || *input == "COLOR" {
-            if command == "ADDASSIGN" && i == 0 {
+        else if input == "XCOR" || input == "YCOR" || input == "HEADING" || input == "COLOR" {
+            if command == "ADDASSIGN" && *inputs_i == 0 {
                 arguments.push(input.to_string());
                 arguments.push(parse_queries(turtle, input).to_string());
             } else {
@@ -200,7 +249,7 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
         // " variable
         else if input.starts_with('"') {
             let var_name = input.trim_start_matches('"');
-            if command == "ADDASSIGN" && i == 0 {
+            if command == "ADDASSIGN" && *inputs_i == 0 {
                 let arg = variables
                     .get(var_name)
                     .ok_or(format!(
@@ -226,9 +275,12 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
                 ))?
                 .clone();
             // Parse value, check for true and false
+            println!("Curr :variable value: {}", value);
             if value.parse::<i32>().is_err() {
-                if value == "TRUE" || value == "FALSE" {
-                    ()
+                if value == "TRUE" || value == "true" {
+                    value = true.to_string();
+                } else if value == "FALSE" || value == "false" {
+                    value = false.to_string();
                 } else {
                     value = variables
                         .get(&value)
@@ -240,9 +292,9 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
                 }
             }
             // Push value
-            if command == "MAKE" && i == 0 {
+            if command == "MAKE" && *inputs_i == 0 {
                 arguments.push(var_name.to_string());
-            } else if command == "ADDASSIGN" && i == 0 {
+            } else if command == "ADDASSIGN" && *inputs_i == 0 {
                 arguments.push(var_name.to_string());
                 arguments.push(value);
             } else {
@@ -251,54 +303,57 @@ pub fn parse_args(inputs: &[&str], command: &str, line_number: &i32, turtle: &mu
         } else {
             return Err(format!("Error: Error on line {}, Unknown command: {}", line_number, input));
         }
+        // Increment inputs_i
+        *inputs_i += 1;
     }
-
     Ok(arguments)
 }
 
 // Execute command line arguments
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, String>, line: &str, line_number: &i32) -> Result<(), String> {
-    let inputs: Vec<&str> = line.split_whitespace().collect();
+    let mut inputs: VecDeque<&str> = line.split_whitespace().collect();
     let command = inputs[0];
-    let arguments = parse_args(&inputs[1..], command, line_number, turtle, variables)?;
+    inputs.drain(0..1);
+    let arguments = parse_args(&mut inputs, command, line_number, turtle, variables, false, &mut 0)?;
 
     // Not comment
     match command {
         // ============= TASK 1 =============
         "PENUP" => { // Just pen up
-            error_extra_arguments(&inputs, 1);
+            error_extra_arguments(&mut inputs, &arguments, 1);
             turtle.pen_up();
         }
         "PENDOWN" => { // Just pen down
-            error_extra_arguments(&inputs, 1);
+            error_extra_arguments(&mut inputs, &arguments, 1);
             turtle.pen_down();
         }
         "FORWARD" => { // Forward dist
-            error_extra_arguments(&inputs, 2);
+            println!("{:?}", arguments);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.move_forward(distance, image);
         }
         "BACK" => { // Back dist
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.move_back(distance, image);
         }
         "LEFT" => { // Left dist
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.left(distance, image);
         }
         "RIGHT" => { // Right dist
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let distance_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let distance: i32 = distance_str.parse().map_err(|_| format!("Error: Error on line {}: Drawing requires an integer argument", line_number))?;
             turtle.right(distance, image);
         }
         "SETPENCOLOR" => { // Setpencolor color
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let color = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let color_code: usize = color.parse().map_err(|_| format!("Error: Error on line {}: Invalid color: {}", line_number, color))?;
             turtle.pen_color_code = color_code.try_into().unwrap_or_else(|_| {
@@ -306,39 +361,38 @@ pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut H
             turtle.set_pen_color(color_code)?; // TODO: if let Err =
         }
         "TURN" => { // Turn degrees
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let degree_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let degree: i32 = degree_str.parse().map_err(|_| format!("Error: Error on line {}: Turning requires an integer.", line_number))?;
             turtle.turn(degree);
         }
         "SETHEADING" => { // Setheading degrees
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let degree_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let degree: i32 = degree_str.parse().map_err(|_| format!("Error: Error on line {}: Setting heading requires an integer.", line_number))?;
             turtle.set_heading(degree);
         }
         "SETX" => { // Setx x
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let position_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_x(position);
         }
         "SETY" => { // Sety y
-            error_extra_arguments(&inputs, 2);
+            error_extra_arguments(&mut inputs, &arguments, 2);
             let position_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let position: i32 = position_str.parse().map_err(|_| format!("Error: Error on line {}: Setting position requires an integer.", line_number))?;
             turtle.set_y(position);
         }
         // ================ TASK 2 ================
         "MAKE" => { // Make var_name value
-            error_extra_arguments(&inputs, 3);
+            error_extra_arguments(&mut inputs, &arguments, 3);
             let var_name_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let var_val_str = arguments.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             turtle.make(var_name_str, var_val_str, variables);
         }
         "ADDASSIGN" => { // AddAssign v1 v2 | ADDASSIGN "forwardDist :dist | arguments = [val_name, v1, v2]
-            error_extra_arguments(&inputs, 3);
-            println!("{:?}", arguments);
+            error_extra_arguments(&mut inputs, &arguments, 3);
             let var_name_str = arguments.get(0).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let v1_str = arguments.get(1).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
             let v2_str = arguments.get(2).ok_or(format!("Error: Error on line {}: Empty line", line_number))?;
