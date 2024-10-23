@@ -1,6 +1,6 @@
 use clap::Parser;
 use unsvg::Image;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::process;
 mod turtle;
 use turtle::{Turtle, execute_command, parse_args, error_extra_arguments};
@@ -71,7 +71,7 @@ fn main() -> Result<(), ()> {
 
         // Increment line
         line_number += 1;
-        let mut inputs: Vec<&str> = line.split_whitespace().collect();
+        let mut inputs: VecDeque<&str> = line.split_whitespace().collect();
 
         // Handle ']': End of a loop
         if inputs[0] == "]" {
@@ -157,31 +157,61 @@ fn main() -> Result<(), ()> {
 }
 
 // Evaluate the condition for IF EQ
-fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut Vec<&str>, line_number: &i32, command: &str) -> bool {
-    // Parse the condition (e.g., "IF EQ XCOR 50")
+fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut VecDeque<&str>, line_number: &i32, command: &str) -> bool {
+    // Check for bool
+    // (e.g., "IF :VARIABLE [")
+    println!("CURR INPUTS: {:?}", inputs);
+    let comparisons = ["EQ", "NE", "AND", "OR"];
+
+    // Doesn't contain a comparison => eval for bool
+    if !inputs.iter().any(|&input| comparisons.contains(&input)) {
+        inputs.pop_front();
+        inputs.pop_back();
+        let arguments = match parse_args(inputs, command, line_number, turtle, variables, false, &mut 0) {
+            Ok(args) => args,
+            Err(e) => {
+                eprintln!("{}", e);
+                process::exit(1);
+            }
+        };
+        println!("SMALL ARGUMENTS: {:?}", arguments);
+        return arguments.get(0).map(|s| s == "true").unwrap_or(false);
+    }
+
+    // Parse the condition
+    // (e.g., "IF EQ XCOR 50 [")
     if inputs.len() < 5 {
         eprintln!("Error: Error on line {}: Empty line", line_number);
         process::exit(1);
     }
-    inputs.pop(); // remove "]"
-    let arguments = match parse_args(&inputs[2..], command, line_number, turtle, variables) {
+    let instructions: Vec<&str> = inputs.drain(0..2).collect(); // remove "IF / WHILE  EQ / AND / OR"
+    inputs.pop_back(); // remove "["
+    let arguments = match parse_args(inputs, command, line_number, turtle, variables, false, &mut 0) {
         Ok(args) => args,
         Err(e) => {
             eprintln!("{}", e);
             process::exit(1);
         }
     };
-    error_extra_arguments(&inputs, &arguments, 5);
+    error_extra_arguments(inputs, &arguments, 5);
+    let v1 = arguments.get(0);
+    let v2 = arguments.get(1);
 
-    // OR
-    // if inputs.contains(&"OR") {
-    //     return (arguments.get(0).copied().unwrap_or(false) || arguments.get(1).copied().unwrap_or(false));
-    // }
-    //  else if inputs.contains(&"AND") {
-    //     return (arguments.get(0).copied().unwrap_or(false) && arguments.get(1).copied().unwrap_or(false));
-    // } else {
+    // Check the equality
+    if instructions.contains(&"OR") {
+        // OR
+        println!("In OR loop: {:?}", arguments);
+        return v1.map(|s| s == "true").unwrap_or(false) || v2.map(|s| s == "true").unwrap_or(false);
+    } else if instructions.contains(&"AND") {
+        // AND
+        println!("In OR loop: {:?}", arguments);
+        return v1.map(|s| s == "true").unwrap_or(false) && v2.map(|s| s == "true").unwrap_or(false);
+    } else if instructions.contains (&"NE") {
+        // NE
+        return v1 != v2;
+    } else {
         // EQ
-        return arguments.get(0) == arguments.get(1);
-    // }
+        return v1 == v2;
+    }
 
 }
