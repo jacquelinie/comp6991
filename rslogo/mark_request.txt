@@ -6,10 +6,10 @@ Please mark stages that are complete with an [X].
 Stages that are partially complete should be marked with a [?].
 Stages that are not complete should be left blank (like [ ]).
 
-> [ ] Stage 1 (Pen Controls)
-> [ ] Stage 2 (Variables + Queries)
-> [ ] Stage 3 (If + While)
-> [ ] Stage 4 (The Stack)
+> [X] Stage 1 (Pen Controls)
+> [X] Stage 2 (Variables + Queries)
+> [X] Stage 3 (If + While)
+> [X] Stage 4 (The Stack)
 > [ ] Stage 5 (Procedures)
 
 ## Design Excellence
@@ -17,6 +17,7 @@ Stages that are not complete should be left blank (like [ ]).
 If you have completed a "design excellence" task, please write what
 the task was below (note, it MUST be on the list in the assignment or
 approved by COMP6991 staff).
+Good Error Messages.
 
 >
 
@@ -24,22 +25,26 @@ Please write a paragraph or two (max. 250 words) describing how your design was
 influenced by this challenge, with specific reference to sections of your code.
 If you completed the "Pull Request" design excellence, please just leave a link
 to your PR.
-
->
->
->
+Part 1: I created a turtle object that contains all the turtle functionality and information to help with modularity.
+Part 2: I created a dictionary in the main function because I realised if I created it within the turtle file, it would be overwritten each time a line was parsed.
+Part 3: This part drove me crazy, and I experimented with extracting and looping within the turtle function, but found that it made it quite messy,
+so I needed a way to know when to execute the lines if the loop condition was true. I decided to try using Vecs as a stack to store information on the loops
+since I realised that the first ']' encountered would be closing the most recent loop (LIFO principles). I chose Vec since it is fastest for accessing the last item.
+While loops made me change how I was parsing the lines, from for loop to while my increment isn't at the end, so that I can traverse backwards to when the loop was initiated.
+Part 4: Math was a combination of Part (1) with match statements and changing inputs to a VecDeque, and popping elements, so that after math was parsed recursively,
+the math arguments won't be parsed twice. I chose VecDeque so that the front and back could be accessed easily for popping instructions from the front.
 
 ## Design Limitations
 
 If you made any design decisions which you now regret making; but don't to go back and change them,
 let us know here. You can make up your design marks by acknowledging up to 5 things you would do
 differently now.
+There's a lot of repeated code here and there, which I would like to clean up and possibly extract to another function.
+I would have tried to use enums more for values since they can be String / integer / usize / bool, using an enum would be better and more idiomatic.
 
 > - TODO
 
 ## Other Comments
-
-If you want to let us know something else about your program, put it here!
-(Feel free to leave this blank)
+Thank you for marking!
 
 > TODO
