@@ -21,13 +21,7 @@ struct Args {
     width: u32,
 }
 
-// Count indentations at the start of the line for loops
-// fn count_indentation(line: &str) -> usize {
-//     line.chars()
-//         .take_while(|ch| ch.is_whitespace())
-//         .count()
-// }
-
+// Main Function
 fn main() -> Result<(), ()> {
     let args: Args = Args::parse();
 
@@ -51,14 +45,8 @@ fn main() -> Result<(), ()> {
     // Stack to track conditional execution
     let mut condition_stack: Vec<bool> = Vec::new();
     let mut loop_stack: Vec<(i32, usize, String)> = Vec::new();
-    // IMPLEMENT:
-    // Keep condition_stack
-    // Add loop_stack which saves which Loop if most recent
-    // Add while_stack which saves start line_numbers of while loops
-    // At ']' check most recent loop, if 'if', close and cont, if 'while' AND true, save start, remove start + close loop (remove bool and from loop stack) --> jump to start of while loop, (check), if while and false, close and cont.
-    // Ensure close if -> remove from condition and loop_stack
-    // Ensure close while -> remove from condition, loop_stack and while_stack
 
+    // Loop and parse lines
     while line_increment < lines.len() {
         let line = lines[line_increment];
         line_increment += 1;
@@ -66,11 +54,10 @@ fn main() -> Result<(), ()> {
         if line.trim().is_empty() || line.starts_with("//")  {
             continue;
         }
-        // println!("1.Curr Stack: {:?}", condition_stack);
-        // println!("2.Curr Loop Stack: {:?}", loop_stack);
 
         // Increment line
         line_number += 1;
+        // Get inputs from each line
         let mut inputs: VecDeque<&str> = line.split_whitespace().collect();
 
         // Handle ']': End of a loop
@@ -156,7 +143,7 @@ fn main() -> Result<(), ()> {
     Ok(())
 }
 
-// Evaluate the condition for IF EQ
+// Evaluate the condition for IF and WHILE
 fn evaluate_condition(turtle: &mut Turtle, variables: &HashMap<String, String>, inputs: &mut VecDeque<&str>, line_number: &i32, command: &str) -> bool {
     // Check for bool
     // (e.g., "IF :VARIABLE [")

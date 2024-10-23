@@ -113,9 +113,7 @@ impl Turtle {
     pub fn make(&mut self, var_name: &str, var_val: &str, variables: &mut HashMap<String, String>) {
         println!("Making variable {}: {}", var_name, var_val);
         // Check for make variable variable case
-        if let Ok(_) = var_val.parse::<i32>() {
-            ();
-        } else {
+        if !var_val.parse::<i32>().is_ok() {
             variables.insert(var_val.to_string(), var_name.to_string());
         }
         variables.insert(var_name.to_string(), var_val.to_string());
@@ -130,6 +128,8 @@ pub fn error_extra_arguments(inputs: &mut VecDeque<&str>, arguments: &Vec<String
         return;
     }
     inputs.pop_front(); // Remove command
+
+    // Get extra arguments and print
     let extra_args: Vec<&str> = inputs.drain(num_inputs..).collect();
     let extra_args_debug: Vec<String> = extra_args.iter().map(|arg| format!("{:?}", arg)).collect();
     let extra_args_str = extra_args_debug.join(", "); // Format Arguments
@@ -140,22 +140,15 @@ pub fn error_extra_arguments(inputs: &mut VecDeque<&str>, arguments: &Vec<String
 // Match Queries and return value
 pub fn parse_queries(turtle: &mut Turtle, input: &str) -> i32 {
     match input {
-        "XCOR" => {
-            return turtle.x;
-        }
-        "YCOR" => {
-            return turtle.y;
-        }
-        "HEADING" => {
-            return turtle.heading;
-        }
-        "COLOR" => {
-            return turtle.pen_color_code;
-        }
-        _ => return 0
+        "XCOR" => turtle.x,
+        "YCOR" => turtle.y,
+        "HEADING" => turtle.heading,
+        "COLOR" => turtle.pen_color_code,
+        _ => 0
     }
 }
 
+// Parse all math related expressions (+, -, *, /, GT, LT, EQ, NE, AND, OR)
 pub fn parse_math(turtle: &mut Turtle, instruction: &str, inputs: &mut VecDeque<&str>, command: &str, line_number: &i32,
     variables: &HashMap<String, String>, inputs_i: &mut i32) -> Result<String, String> {
     println!("Math inputs: {:?}", inputs);
@@ -185,6 +178,7 @@ pub fn parse_math(turtle: &mut Turtle, instruction: &str, inputs: &mut VecDeque<
         return Ok(result.to_string());
     }
 
+    // Check for
     let math_operations = ["+", "-", "*", "/", "GT", "LT"];
     if math_operations.contains(&instruction) {
         let v1: i32 = v1_str.parse().map_err(|_| format!("Error: Error on line {}: Math requires a value.", line_number))?;
@@ -210,18 +204,16 @@ pub fn parse_math(turtle: &mut Turtle, instruction: &str, inputs: &mut VecDeque<
         };
        return Ok(result.to_string());
     }
-    return Err(format!("Error: Error on line {}, Unknown operator: {}", line_number, instruction));
+    Err(format!("Error: Error on line {}, Unknown operator: {}", line_number, instruction))
 }
 
-// Parse arguments
+// Parse each arguments from inputs
 pub fn parse_args(inputs: &mut VecDeque<&str>, command: &str, line_number: &i32, turtle: &mut Turtle, variables: &HashMap<String, String>,
     parsing_math: bool, inputs_i: &mut i32) -> Result<Vec<String>, String> {
     let mut arguments = Vec::new();
 
+    // While input stack is empty, continue parsing
     while !inputs.is_empty() {
-        println!("Curr inputs: {:?}", inputs);
-        println!("Curr arguments: {:?}", arguments);
-        println!("Curr variables: {:?}", variables);
         // Check that math is fulfilled:
         if parsing_math && arguments.len() == 2 {
             return Ok(arguments);
@@ -255,6 +247,8 @@ pub fn parse_args(inputs: &mut VecDeque<&str>, command: &str, line_number: &i32,
             } else if var_name == "false"{
                 var_name = "false";
             }
+
+            // ADDASSIGN requires getting value of variable if possible
             if command == "ADDASSIGN" && *inputs_i == 0 {
                 let arg = variables
                     .get(var_name)
@@ -297,7 +291,7 @@ pub fn parse_args(inputs: &mut VecDeque<&str>, command: &str, line_number: &i32,
                         .clone();
                 }
             }
-            // Push value
+            // Push value into arguments
             if command == "MAKE" && *inputs_i == 0 {
                 arguments.push(var_name.to_string());
             } else if command == "ADDASSIGN" && *inputs_i == 0 {
@@ -317,10 +311,13 @@ pub fn parse_args(inputs: &mut VecDeque<&str>, command: &str, line_number: &i32,
 
 // Execute command line arguments
 pub fn execute_command(turtle: &mut Turtle, image: &mut Image, variables: &mut HashMap<String, String>, line: &str, line_number: &i32) -> Result<(), String> {
+    // Initiate inputs, og_inputs for extra argument printing and command
     let mut inputs: VecDeque<&str> = line.split_whitespace().collect();
     let mut og_inputs: VecDeque<&str> = line.split_whitespace().collect();
     let command = inputs[0];
     inputs.drain(0..1);
+
+    // Get arguments
     let arguments = parse_args(&mut inputs, command, line_number, turtle, variables, false, &mut 0)?;
 
     // Not comment

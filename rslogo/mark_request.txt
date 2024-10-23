@@ -39,8 +39,10 @@ the math arguments won't be parsed twice. I chose VecDeque so that the front and
 If you made any design decisions which you now regret making; but don't to go back and change them,
 let us know here. You can make up your design marks by acknowledging up to 5 things you would do
 differently now.
-There's a lot of repeated code here and there, which I would like to clean up and possibly extract to another function.
-I would have tried to use enums more for values since they can be String / integer / usize / bool, using an enum would be better and more idiomatic.
+
+1. There's a lot of repeated code here and there, which I would like to clean up and extract to another function.
+2. I would have tried to use enums more for values since they can be String / integer / usize / bool, using an enum would be better and more idiomatic.
+
 
 > - TODO
 
