@@ -42,7 +42,7 @@ differently now.
 
 1. There's a lot of repeated code here and there, which I would like to clean up and extract to another function.
 2. I would have tried to use enums more for values since they can be String / integer / usize / bool, using an enum would be better and more idiomatic.
-
+3. I would have had all the execute command and parsing functions in a separate crate for better modularity. 
 
 > - TODO
 
