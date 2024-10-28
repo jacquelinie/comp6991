@@ -1,1 +1,0 @@
-for<'a, 'b, 'c, 'd, 'e, 'f> fn(&'a [&'b str], &'c str, &'d i32, &'e mut Turtle, &'f HashMap<std::string::String, std::string::String>) -> Result<Vec<std::string::String>, std::string::String> {parse_args}
