@@ -36,7 +36,7 @@ pub struct Point<T> {
     pub y: T,
 }
 
-impl Point {
+impl Point<f32> {
     /// Returns the distance between two points.
     /// ```
     /// use pointy::Point;
