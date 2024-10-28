@@ -54,5 +54,7 @@ fn main() {
 
 fn speak_all_greetings(person: &Person) {
     println!("{} says:", person.name);
-    //TODO (2): iterate over the greetings and call greet() on each one
+    for greeting in &person.greetings {
+        greeting.greet();
+    }
 }

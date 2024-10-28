@@ -22,6 +22,32 @@ pub struct Coin;
 
 // MODIFY/ADD BELOW HERE ONLY
 
+pub trait Roll {
+    fn roll(&self) -> u8;
+}
+
+impl Roll for Die {
+    fn roll(&self) -> u8 {
+        let val = match self {
+            Die::D4 => get_random_value(4),
+            Die::D6 => get_random_value(6),
+            Die::D8 => get_random_value(8),
+            Die::D10 => get_random_value(10),
+            Die::D12 => get_random_value(12),
+            Die::D20 => get_random_value(20),
+
+        };
+        return val;
+    }
+}
+
+impl Roll for Coin {
+    fn roll(&self) -> u8 {
+        let mut rng = ChaCha20Rng::seed_from_u64(2);
+        rng.gen_range(1..=2);
+    }
+}
+
 pub fn roll<T>(item: T) -> u8 {
-    todo!()
+   item.roll();
 }

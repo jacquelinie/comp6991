@@ -12,8 +12,8 @@
 /// ```
 // TODO: implement the below function
 // You will need to change its signature
-pub fn first() {
-    todo!("implement the first function");
+pub fn first<T>(vec: &[T]) -> &T {
+    return &vec[0]
 }
 
 /// A generic point struct.
@@ -31,9 +31,9 @@ pub fn first() {
 /// assert_eq!(1.0, point.x);
 /// assert_eq!(2.0, point.y);
 /// ```
-pub struct Point {
-    pub x: i32,
-    pub y: i32,
+pub struct Point<T> {
+    pub x: T,
+    pub y: T,
 }
 
 impl Point {
@@ -50,7 +50,16 @@ impl Point {
     /// let point1 = Point::new(1.0, 2.0);
     /// assert_eq!(1.0, point1.x);
     /// ```
-    pub fn distance(&self, second: &Point) -> f32 {
-        todo!()
+    pub fn distance(&self, second: &Point<f32>) -> f32 {
+        let x = self.x - second.x;
+        let y = self.y - second.y;
+        return (x * x + y * y).sqrt()
+    }
+}
+
+impl<T> Point<T> {
+    // Returns a new point that takes two values of type T
+    pub fn new(x: T, y: T) -> Self {
+        return Self{x, y}
     }
 }
