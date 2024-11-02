@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use std::thread;
+use std::sync::mpsc::channel;
 
 mod test;
 fn main() {
@@ -40,23 +41,31 @@ fn main() {
         .collect::<Vec<_>>()
         .into_iter();
 
+    let (send, receive) = channel();
     thread::scope(|s| {
-        for _ in 0..6 {
+        for thread_id in 0..6 {
             if let Some(chunk) = chunks.next() {
-                s.spawn(|| {
+                let sender = send.clone();
+                s.spawn(move || {
+                    let mut i = 0;
                     chunk.iter().for_each(|(digits, operators)| {
-                        let _ = calculate(digits.to_vec(), operators.to_vec());
+                        if let Ok(()) = calculate(digits.to_vec(), operators.to_vec()) {
+                            i += 1;
+                        }
+                        sender.send((thread_id, i)).unwrap();
                     });
                 });
             }
         }
     });
 
-    // for (digits, operators) in digits_operators {
-    //     // go through one combination of
-    //     // operators and see if it works
-    //     let _ = calculate(digits, operators);
-    // }
+    let mut j = 0;
+    for _ in 0..6 {
+        let (thread_id, i) = receive.recv().unwrap();
+        println!("Thread {} found {} combinations", thread_id, i);
+        j += i;
+    }
+    println!("Total: {}", j);
 }
 
 // DO NOT MODIFY
