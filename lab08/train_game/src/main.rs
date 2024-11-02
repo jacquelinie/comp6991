@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use std::thread;
+
 mod test;
 fn main() {
     // take number from commandline arg
@@ -30,11 +32,31 @@ fn main() {
     // first, split up the digits_operators into 6 vecs
     // using the chunks method
 
-    for (digits, operators) in digits_operators {
-        // go through one combination of
-        // operators and see if it works
-        let _ = calculate(digits, operators);
-    }
+    let threads = 6;
+
+    let mut chunks = digits_operators
+        .chunks(length / threads)
+        .into_iter()
+        .collect::<Vec<_>>()
+        .into_iter();
+
+    thread::scope(|s| {
+        for _ in 0..6 {
+            if let Some(chunk) = chunks.next() {
+                s.spawn(|| {
+                    chunk.iter().for_each(|(digits, operators)| {
+                        let _ = calculate(digits.to_vec(), operators.to_vec());
+                    });
+                });
+            }
+        }
+    });
+
+    // for (digits, operators) in digits_operators {
+    //     // go through one combination of
+    //     // operators and see if it works
+    //     let _ = calculate(digits, operators);
+    // }
 }
 
 // DO NOT MODIFY
