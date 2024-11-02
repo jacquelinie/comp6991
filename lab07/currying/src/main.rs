@@ -1,5 +1,10 @@
 //TODO: Your curry! macro here:
-
+macro_rules! curry {
+    (_, $block: block) => {$block};
+    (($argi: ident : $argt: ty) => $(($argis: ident : $argts: ty) => )* _, $block: block) => {
+        move |$argi: $argt| curry!($(($argis: $argts) => )* _, $block)
+    }
+}
 
 ////////// DO NOT CHANGE BELOW HERE /////////
 

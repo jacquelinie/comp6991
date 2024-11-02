@@ -5,6 +5,11 @@ fn print_success() {
 ////////// DO NOT CHANGE ABOVE HERE /////////
 
 // TODO: create `if_any!()` macro.
+macro_rules! if_any {
+    ($($n: expr), +; $block: block) => {
+        if ($($n) ||+) $block
+    }
+}
 
 
 ////////// DO NOT CHANGE BELOW HERE /////////
