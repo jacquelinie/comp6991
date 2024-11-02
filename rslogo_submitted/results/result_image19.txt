@@ -1,1 +1,0 @@
-Error: Error on line 3: Could not find variable :leftAngle

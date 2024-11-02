@@ -1,6 +1,5 @@
 /// Main function for a Logo Parser in Rust
 /// Use with cargo run INSTRUCTION_FILE_PATH OUTPUT_FILE_PATH Height Width
-
 use clap::Parser;
 use std::collections::{HashMap, VecDeque};
 use std::process;
@@ -295,7 +294,6 @@ fn parse_bool(value: Option<&String>, line_number: &i32) -> Result<bool, String>
     }
 }
 
-
 // ============== Tests for main function ===============
 #[cfg(test)]
 mod tests {
@@ -340,7 +338,9 @@ mod tests {
 
         let result = execute_command(&mut turtle, &mut image, &mut variables, line, &line_number);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Drawing requires an integer argument"));
+        assert!(result
+            .unwrap_err()
+            .contains("Drawing requires an integer argument"));
     }
 
     #[test]

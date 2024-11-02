@@ -44,10 +44,10 @@ impl Roll for Die {
 impl Roll for Coin {
     fn roll(&self) -> u8 {
         let mut rng = ChaCha20Rng::seed_from_u64(2);
-        rng.gen_range(1..=2);
+        return rng.gen_range(1..=2);
     }
 }
 
-pub fn roll<T>(item: T) -> u8 {
-   item.roll();
+pub fn roll<T: Roll>(item: T) -> u8 {
+   return item.roll();
 }

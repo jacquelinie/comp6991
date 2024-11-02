@@ -31,7 +31,16 @@ struct Person {
 }
 
 // TODO (1): Add your impl From block below, before main!
-
+impl From<&str> for Box<dyn Greeting> {
+    fn from(language: &str) -> Self {
+        match language {
+            "English" => Box::new(English),
+            "Spanish" => Box::new(Spanish),
+            "French" => Box::new(French),
+            _ => panic!("Language not supported: {}", language),
+        }
+    }
+}
 
 // DO NOT NEED TO CHANGE MAIN
 fn main() {
