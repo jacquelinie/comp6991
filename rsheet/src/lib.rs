@@ -5,10 +5,12 @@ use rsheet_lib::connect::{
 use rsheet_lib::replies::Reply;
 use rsheet_lib::cell_value::CellValue;
 use rsheet_lib::cell_expr::{CellArgument, CellExpr, CellExprEvalError};
+use rsheet_lib::cells::{column_number_to_name, column_name_to_number};
 use std::error::Error;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use log::info;
+use std::process;
 use lazy_static::lazy_static;
 
 
@@ -62,6 +64,7 @@ where
     Ok(())
 }
 
+// ===================== HELPERS ============================
 
 // Converts hashmap arguments
 fn convert_to_arguments(cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
@@ -73,18 +76,57 @@ fn convert_to_arguments(cells: &HashMap<String, CellValue>) -> HashMap<String, C
 
 // Converts CellIdentifier into String
 fn cell_to_string(cell_identifier: &CellIdentifier) -> String {
-    // Convert the `col` to letters
-    let mut col = cell_identifier.col + 1;
-    let mut col_name = String::new();
+    let col_name = column_number_to_name(cell_identifier.col);
     let row = cell_identifier.row + 1;
 
-    while col > 0 {
-        col -= 1;
-        col_name.insert(0, (b'A' + (col % 26) as u8) as char);
-        col /= 26;
-    }
     // Return column and row
     format!("{}{}", col_name, row)
+}
+
+// Create CellValue
+fn new_cell_value(value: &str) -> CellValue {
+    if value.is_empty() {
+        // None
+        CellValue::None
+    } else if let Ok(int_value) = value.parse::<i64>() {
+        // Integer
+        CellValue::Int(int_value)
+    } else if value.starts_with("\"") && value.ends_with("\"") {
+        // String
+        let string_value = value[1..value.len() - 1].to_string();
+        CellValue::String(string_value)
+    } else {
+        // Error
+        eprintln!("Error parsing: Invalid value");
+        process::exit(1);
+    }
+}
+
+// Function to parse the cell expression into the hashmap of cellvalues
+fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
+    // Check for args
+    let vars = cell_expr.find_variable_names();
+    if vars.is_empty() {
+        return HashMap::new();
+    }
+
+    let mut results = HashMap::new();
+    for var in vars {
+        // Value
+        let value = cells.get(&var).cloned().unwrap_or(CellValue::None);
+
+
+        // Matrix
+        // if var.contains("_") {
+
+        // } else {
+
+        // }
+
+        // Vector
+        results.insert(var, value);
+    }
+    return convert_to_arguments(&results);
 }
 
 // ===================== STAGE 1 ============================
@@ -103,22 +145,14 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 
 // Handles set request
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Reply> {
-    let expr = CellExpr::new(cell_expr);
     let cell_address = cell_to_string(cell_identifier);
+    let expr = CellExpr::new(cell_expr);
 
-    // Acquire the lock and convert to the expected argument type
+    // Get cells
     let mut cells = CELL_MAP.lock().unwrap();
-    let cell_arguments = convert_to_arguments(&*cells);
+    let variables = parse_expr_args(&expr, &cells);
 
-    // Check for expression
-    let vars = expr.find_variable_names();
-    let result: Result<CellValue, CellExprEvalError> = if vars.is_empty() {
-        // If no variables, try parsing the cell expression directly
-        parse_cell_value(cell_expr)
-    } else {
-        // Otherwise, evaluate the expression
-        expr.evaluate(&cell_arguments)
-    };
+    let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
 
     // Set result
     match result {
@@ -127,24 +161,6 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Repl
             None
         }
         Err(e) => Some(Reply::Error(format!("Error with setting value: {:?}", e))),
-    }
-}
-
-// Function to parse the cell expression into the correct CellValue type
-fn parse_cell_value(cell_expr: &str) -> Result<CellValue, CellExprEvalError> {
-    if cell_expr.is_empty() {
-        // None
-        Ok(CellValue::None)
-    } else if let Ok(int_value) = cell_expr.parse::<i64>() {
-        // Integer
-        Ok(CellValue::Int(int_value))
-    } else if cell_expr.starts_with("\"") && cell_expr.ends_with("\"") {
-        // String
-        let string_value = cell_expr[1..cell_expr.len() - 1].to_string();
-        Ok(CellValue::String(string_value))
-    } else {
-        // Error
-        Err(CellExprEvalError::VariableDependsOnError)
     }
 }
 
