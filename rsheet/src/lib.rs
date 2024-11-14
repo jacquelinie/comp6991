@@ -232,10 +232,6 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply> {
     let cell_address = cell_to_string(cell_identifier);
     let expr = CellExpr::new(cell_expr);
-<<<<<<< HEAD
-    // println!("Handling Set....");
-=======
->>>>>>> 5870be816eefd653acd3a269d1604d28dc9f436e
 
     let mut cells = CELL_MAP.lock().unwrap();
     let variables = parse_expr_args(&expr, &cells);
