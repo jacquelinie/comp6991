@@ -15,12 +15,12 @@ use std::process;
 
 
 type CellMap = Mutex<HashMap<String, CellValue>>;
-type ExprMap = Mutex<HashMap<String, CellExpr>>;
+type ExprMap = Mutex<HashMap<String, String>>;
 
 // Initialize the cell map globally or within the server instance
 lazy_static::lazy_static! {
     static ref CELL_MAP: CellMap = Mutex::new(HashMap::new());
-    static ref EXPR_MAP: CellMap = Mutex::new(HashMap::new());
+    static ref EXPR_MAP: ExprMap = Mutex::new(HashMap::new());
 }
 // Create a separate map to track errors
 lazy_static::lazy_static! {
@@ -107,6 +107,68 @@ fn new_cell_value(value: &str) -> CellValue {
         process::exit(1);
     }
 }
+
+fn evaluate_expr(expr: CellExpr, cells: &HashMap<String, CellValue>) -> Result<CellValue, CellExprEvalError> {
+    let variables = parse_expr_args(&expr, &cells);
+    let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
+    result
+}
+
+// ===================== STAGE 1 ============================
+
+// Handles get request
+fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
+    let cell_address = cell_to_string(cell_identifier);
+
+    let cell_errors = CELL_ERRORS.lock().unwrap();
+    let cells = CELL_MAP.lock().unwrap();
+    let exprs = EXPR_MAP.lock().unwrap();
+    if let Some(cell_expr) = exprs.get(&cell_address) {
+        let expr = CellExpr::new(cell_expr);
+        evaluate_expr(expr, &cells).ok();
+    }
+
+
+    // Check if any cells are depending on errors
+    if let Some(error) = cell_errors.get(&cell_address) {
+        return Reply::Error(format!("Cannot get cell {}: it depends on an error - {}", cell_address, error));
+    }
+
+    // Otherwise, proceed with checking cells
+    match cells.get(&cell_address) {
+        Some(value) => Reply::Value(cell_address, value.clone()),
+        None => Reply::Value(cell_address, CellValue::None),
+    }
+}
+
+// Handles set request
+fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply> {
+    let mut cells = CELL_MAP.lock().unwrap();
+    let mut exprs = EXPR_MAP.lock().unwrap();
+
+    let cell_address = cell_to_string(cell_identifier);
+    let expr = CellExpr::new(cell_expr);
+
+    exprs.insert(cell_address.clone(), (*cell_expr).to_string());
+
+    let result: Result<CellValue, CellExprEvalError> = evaluate_expr(expr, &cells);
+
+    match result {
+        // Ok -> Store
+        Ok(value) => {
+            cells.insert(cell_address.clone(), value.clone());
+            CELL_ERRORS.lock().unwrap().remove(&cell_address);
+            None
+        }
+        // Eval Error
+        Err(e) => {
+            CELL_ERRORS.lock().unwrap().insert(cell_address.clone(), format!("{:?}", e));
+            None
+        }
+    }
+}
+
+// ===================== STAGE 2 ============================
 
 // Function to parse the cell expression into the hashmap of cellvalues
 fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
@@ -207,50 +269,3 @@ fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
 
     CellArgument::Matrix(matrix_values)
 }
-
-// ===================== STAGE 1 ============================
-
-// Handles get request
-fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
-    let cell_address = cell_to_string(cell_identifier);
-
-    // First, check if the cell has an error in CELL_ERRORS
-    let cell_errors = CELL_ERRORS.lock().unwrap();
-    if let Some(error) = cell_errors.get(&cell_address) {
-        return Reply::Error(format!("Cannot get cell {}: it depends on an error - {}", cell_address, error));
-    }
-
-    // Otherwise, proceed with checking CELL_MAP
-    let cells = CELL_MAP.lock().unwrap();
-    match cells.get(&cell_address) {
-        Some(value) => Reply::Value(cell_address, value.clone()),
-        None => Reply::Value(cell_address, CellValue::None),
-    }
-}
-
-// Handles set request
-fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply> {
-    let cell_address = cell_to_string(cell_identifier);
-    let expr = CellExpr::new(cell_expr);
-
-    let mut cells = CELL_MAP.lock().unwrap();
-    let variables = parse_expr_args(&expr, &cells);
-
-    let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
-
-    match result {
-        Ok(value) => {
-            cells.insert(cell_address.clone(), value.clone());
-
-            // Clear any previous error if the set was successful
-            CELL_ERRORS.lock().unwrap().remove(&cell_address);
-            None
-        }
-        Err(e) => {
-            // Store the error in the CELL_ERRORS map
-            CELL_ERRORS.lock().unwrap().insert(cell_address.clone(), format!("{:?}", e));
-            None
-        }
-    }
-}
-
