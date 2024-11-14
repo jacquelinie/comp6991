@@ -235,7 +235,6 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Repl
     let variables = parse_expr_args(&expr);
 
     let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
-    // println!("Result: {:?}", result);
 
     // Set result
     match result {
