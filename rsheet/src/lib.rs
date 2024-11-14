@@ -217,7 +217,7 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     // println!("Handling Get....");
 
     match cells.get(&cell_address) {
-        Some(CellValue::Error(err)) => Reply::Error(err.clone()),
+        // Some(CellValue::Error(err)) => Reply::Value(cell_address, CellValue::Error(err.clone())),
         Some(value) => Reply::Value(cell_address, value.clone()),
         None => Reply::Value(cell_address, CellValue::None),
     }
@@ -235,6 +235,7 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Repl
     let variables = parse_expr_args(&expr);
 
     let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
+    // println!("Result: {:?}", result);
 
     // Set result
     match result {
