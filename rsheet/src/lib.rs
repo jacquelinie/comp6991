@@ -115,7 +115,7 @@ fn parse_expr_args(cell_expr: &CellExpr) -> HashMap<String, CellArgument> {
     let mut results = HashMap::new();
     let cells = CELL_MAP.lock().unwrap();
 
-    println!("VARS: {:?}", vars);
+    // println!("VARS: {:?}", vars);
 
     for var in vars {
         // Value
@@ -214,7 +214,7 @@ fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
 fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     let cell_address = cell_to_string(cell_identifier);
     let cells = CELL_MAP.lock().unwrap();
-    println!("Handling Get....");
+    // println!("Handling Get....");
 
     match cells.get(&cell_address) {
         Some(CellValue::Error(err)) => Reply::Error(err.clone()),
@@ -228,7 +228,7 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Reply> {
     let cell_address = cell_to_string(cell_identifier);
     let expr = CellExpr::new(cell_expr);
-    println!("Handling Set....");
+    // println!("Handling Set....");
 
     // Get cells
     let mut cells = CELL_MAP.lock().unwrap();
