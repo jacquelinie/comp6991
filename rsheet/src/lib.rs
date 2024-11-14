@@ -105,17 +105,13 @@ fn new_cell_value(value: &str) -> CellValue {
 }
 
 // Function to parse the cell expression into the hashmap of cellvalues
-fn parse_expr_args(cell_expr: &CellExpr) -> HashMap<String, CellArgument> {
+fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
     // Check for args
     let vars = cell_expr.find_variable_names();
     if vars.is_empty() {
         return HashMap::new();
     }
-
     let mut results = HashMap::new();
-    let cells = CELL_MAP.lock().unwrap();
-
-    // println!("VARS: {:?}", vars);
 
     for var in vars {
         // Value
@@ -146,6 +142,7 @@ fn parse_expr_args(cell_expr: &CellExpr) -> HashMap<String, CellArgument> {
         // Insert
         results.insert(var, value);
     }
+    println!("VAR RESULTS: {:?}", results);
     results
 }
 
@@ -217,7 +214,6 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     // println!("Handling Get....");
 
     match cells.get(&cell_address) {
-        // Some(CellValue::Error(err)) => Reply::Value(cell_address, CellValue::Error(err.clone())),
         Some(value) => Reply::Value(cell_address, value.clone()),
         None => Reply::Value(cell_address, CellValue::None),
     }
@@ -228,14 +224,15 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) ->  Option<Reply> {
     let cell_address = cell_to_string(cell_identifier);
     let expr = CellExpr::new(cell_expr);
-    // println!("Handling Set....");
+    println!("Handling Set....");
 
     // Get cells
     let mut cells = CELL_MAP.lock().unwrap();
-    let variables = parse_expr_args(&expr);
+    let variables = parse_expr_args(&expr, &cells);
+    println!("VARIABLES: {:?}", variables);
 
     let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
-    // println!("Result: {:?}", result);
+    println!("Result: {:?}", result);
 
     // Set result
     match result {
