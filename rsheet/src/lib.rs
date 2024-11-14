@@ -108,10 +108,20 @@ fn new_cell_value(value: &str) -> CellValue {
     }
 }
 
-fn evaluate_expr(expr: CellExpr, cells: &HashMap<String, CellValue>) -> Result<CellValue, CellExprEvalError> {
+fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_address: String, cell_errors: &mut HashMap<String, String>) {
     let variables = parse_expr_args(&expr, &cells);
     let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
-    result
+    match result {
+        // Ok -> Store
+        Ok(value) => {
+            cells.insert(cell_address.clone(), value.clone());
+            cell_errors.remove(&cell_address);
+        }
+        // Eval Error
+        Err(e) => {
+            cell_errors.insert(cell_address.clone(), format!("{:?}", e));
+        }
+    }
 }
 
 // ===================== STAGE 1 ============================
@@ -120,12 +130,12 @@ fn evaluate_expr(expr: CellExpr, cells: &HashMap<String, CellValue>) -> Result<C
 fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     let cell_address = cell_to_string(cell_identifier);
 
-    let cell_errors = CELL_ERRORS.lock().unwrap();
-    let cells = CELL_MAP.lock().unwrap();
+    let mut cell_errors = CELL_ERRORS.lock().unwrap();
+    let mut cells = CELL_MAP.lock().unwrap();
     let exprs = EXPR_MAP.lock().unwrap();
     if let Some(cell_expr) = exprs.get(&cell_address) {
         let expr = CellExpr::new(cell_expr);
-        evaluate_expr(expr, &cells).ok();
+        evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors);
     }
 
 
@@ -145,27 +155,16 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply> {
     let mut cells = CELL_MAP.lock().unwrap();
     let mut exprs = EXPR_MAP.lock().unwrap();
+    let mut cell_errors = CELL_ERRORS.lock().unwrap();
 
     let cell_address = cell_to_string(cell_identifier);
     let expr = CellExpr::new(cell_expr);
 
     exprs.insert(cell_address.clone(), (*cell_expr).to_string());
 
-    let result: Result<CellValue, CellExprEvalError> = evaluate_expr(expr, &cells);
+    evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors);
 
-    match result {
-        // Ok -> Store
-        Ok(value) => {
-            cells.insert(cell_address.clone(), value.clone());
-            CELL_ERRORS.lock().unwrap().remove(&cell_address);
-            None
-        }
-        // Eval Error
-        Err(e) => {
-            CELL_ERRORS.lock().unwrap().insert(cell_address.clone(), format!("{:?}", e));
-            None
-        }
-    }
+    None
 }
 
 // ===================== STAGE 2 ============================
