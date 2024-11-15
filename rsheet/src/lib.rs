@@ -8,6 +8,7 @@ use rsheet_lib::cell_expr::{CellArgument, CellExpr, CellExprEvalError};
 use rsheet_lib::cells::{column_number_to_name, column_name_to_number};
 use std::error::Error;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Mutex;
 use log::info;
 use std::process;
@@ -16,15 +17,15 @@ use std::process;
 
 type CellMap = Mutex<HashMap<String, CellValue>>;
 type ExprMap = Mutex<HashMap<String, String>>;
+type DepMap = Mutex<HashMap<String, HashSet<String>>>;
 
 // Initialize the cell map globally or within the server instance
 lazy_static::lazy_static! {
     static ref CELL_MAP: CellMap = Mutex::new(HashMap::new());
     static ref EXPR_MAP: ExprMap = Mutex::new(HashMap::new());
-}
-// Create a separate map to track errors
-lazy_static::lazy_static! {
-    static ref CELL_ERRORS: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref DEPENDENCIES: DepMap = Mutex::new(HashMap::new());
+    static ref DEPENDERS: DepMap = Mutex::new(HashMap::new());
+    static ref CELL_ERRORS: ExprMap = Mutex::new(HashMap::new());
 }
 
 pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
@@ -108,9 +109,16 @@ fn new_cell_value(value: &str) -> CellValue {
     }
 }
 
-fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_address: String, cell_errors: &mut HashMap<String, String>) {
-    let variables = parse_expr_args(&expr, &cells);
+// Evalutes expression
+fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_address: String, cell_errors: &mut HashMap<String, String>,
+    exprs: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>, dependencies: &mut HashMap<String, HashSet<String>>) {
+    let mut new_dependers: HashSet<String> = HashSet::new();
+    let variables = parse_expr_args(&expr, &cells, &mut new_dependers);
+
+    // println!("Evaluating....");
+
     let result: Result<CellValue, CellExprEvalError> = expr.evaluate(&variables);
+    // println!("Retrieved Result: {:?}", result);
     match result {
         // Ok -> Store
         Ok(value) => {
@@ -122,6 +130,10 @@ fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_ad
             cell_errors.insert(cell_address.clone(), format!("{:?}", e));
         }
     }
+
+    // println!("Finished Evaluating...: {}", cell_address);
+
+    process_dependencies(new_dependers.clone(), cell_address.clone(), exprs, cells, cell_errors, dependers, dependencies);
 }
 
 // ===================== STAGE 1 ============================
@@ -132,12 +144,11 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 
     let mut cell_errors = CELL_ERRORS.lock().unwrap();
     let mut cells = CELL_MAP.lock().unwrap();
-    let exprs = EXPR_MAP.lock().unwrap();
-    if let Some(cell_expr) = exprs.get(&cell_address) {
-        let expr = CellExpr::new(cell_expr);
-        evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors);
-    }
-
+    // let mut exprs = EXPR_MAP.lock().unwrap();
+    // if let Some(cell_expr) = exprs.get(&cell_address) {
+    //     let expr = CellExpr::new(cell_expr);
+    //     evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors, &mut exprs);
+    // }
 
     // Check if any cells are depending on errors
     if let Some(error) = cell_errors.get(&cell_address) {
@@ -156,13 +167,16 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply
     let mut cells = CELL_MAP.lock().unwrap();
     let mut exprs = EXPR_MAP.lock().unwrap();
     let mut cell_errors = CELL_ERRORS.lock().unwrap();
+    let mut dependers = DEPENDERS.lock().unwrap();
+    let mut dependencies = DEPENDENCIES.lock().unwrap();
 
     let cell_address = cell_to_string(cell_identifier);
     let expr = CellExpr::new(cell_expr);
 
     exprs.insert(cell_address.clone(), (*cell_expr).to_string());
 
-    evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors);
+    evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors, &mut exprs, &mut dependers, &mut dependencies);
+    // update dependencies
 
     None
 }
@@ -170,7 +184,7 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply
 // ===================== STAGE 2 ============================
 
 // Function to parse the cell expression into the hashmap of cellvalues
-fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
+fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>, new_dependers: &mut HashSet<String>) -> HashMap<String, CellArgument> {
     // Check for args
     let vars = cell_expr.find_variable_names();
     if vars.is_empty() {
@@ -194,14 +208,15 @@ fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>) -> 
 
                 // Matrix: both row and column are different
                 if row1 != row2 && col1 != col2 {
-                    value = get_matrix(coords, &cells);
+                    value = get_matrix(coords, &cells, new_dependers);
                 }
                 // Vector: either rows or columns are the same
                 else if row1 == row2 || col1 == col2 {
-                    value = get_vector(coords, &cells);
+                    value = get_vector(coords, &cells, new_dependers);
                 }
             }
         } else {
+            new_dependers.insert(var.clone());
             value = CellArgument::Value(get_value(&var, &cells));
         }
         // Insert
@@ -216,7 +231,7 @@ fn get_value(var: &str, cells: &HashMap<String, CellValue>) -> CellValue{
 }
 
 // Get vector of cells
-fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgument {
+fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: &mut HashSet<String>) -> CellArgument {
     // Extract start and end coordinates
     let start = coords[0];
     let end = coords[1];
@@ -232,12 +247,14 @@ fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
         // Row vector (iterate over columns in the same row)
         for col in start_col..=end_col {
             let coord = format!("{}{}", start_row, col);
+            dependers.insert(coord.clone());
             vector_values.push(get_value(&coord, cells));
         }
     } else if start_col == end_col {
         // Column vector (iterate over rows in the same column)
         for row in start_row..=end_row {
             let coord = format!("{}{}", row, start_col);
+            dependers.insert(coord.clone());
             vector_values.push(get_value(&coord, cells));
         }
     }
@@ -246,7 +263,7 @@ fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
 }
 
 // Get matrix of cells
-fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgument {
+fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: &mut HashSet<String>) -> CellArgument {
     // Extract start and end coordinates
     let start = coords[0];
     let end = coords[1];
@@ -261,6 +278,7 @@ fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
         let mut row_values = Vec::new();
         for col in start_col..=end_col {
             let coord = format!("{}{}", row, col);
+            dependers.insert(coord.clone());
             row_values.push(get_value(&coord, cells));
         }
         matrix_values.push(row_values);
@@ -268,3 +286,62 @@ fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>) -> CellArgu
 
     CellArgument::Matrix(matrix_values)
 }
+
+// ===================== STAGE 4 + 5 ============================
+
+// Update dependencies TODO:
+fn update_dependencies(cell_address: String, dependencies: &mut HashMap<String, HashSet<String>>, exprs: &mut HashMap<String, String>, cells: &mut HashMap<String, CellValue>,
+    cell_errors: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>) {
+    let mut dependencies_clone = dependencies.clone();
+    let deps = dependencies_clone.entry(cell_address.clone()).or_insert_with(HashSet::new);
+
+    // println!("DEPS: {:?}", deps);
+
+    for dep in deps.iter() {
+        let expr_string = exprs.entry(dep.clone()).or_insert_with(|| String::new());
+        let expr = CellExpr::new(expr_string); // No need to insert
+        evaluate_expr(expr, cells, dep.clone(), cell_errors, exprs, dependers, dependencies); // Should never have a circular case
+    }
+
+    // println!("Finished updating....");
+}
+
+
+fn process_dependencies(new_dependers: HashSet<String>, cell_address: String, exprs: &mut HashMap<String, String>, cells: &mut HashMap<String, CellValue>,
+    cell_errors: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>, dependencies: &mut HashMap<String, HashSet<String>>) {
+
+    // println!("Processing....: {}", cell_address);
+
+    // let empty_old: HashSet<String> = HashSet::new();
+    let old_dependers = dependers.remove(&cell_address).unwrap_or_default();
+
+    let added_dependers = new_dependers.difference(&old_dependers);
+    let removed_dependers = old_dependers.difference(&new_dependers);
+
+    // Insert new dependers
+    dependers.insert(cell_address.clone(), new_dependers.clone());
+
+    // println!("DEFENDERS: {:?}", dependers);
+
+    // Edit old dependencies (for removed dependers)
+    for dependency in removed_dependers {
+        if let Some(mut curr_dependencies) = dependencies.remove(dependency) {
+            curr_dependencies.remove(&cell_address);
+            dependencies.insert(dependency.to_string(), curr_dependencies);
+        }
+    }
+
+    // println!("DEPENDENCIES after remove: {:?}", dependencies);
+
+    // Add new dependencies (for added dependers)
+    for dependency in added_dependers {
+        // Use `entry` to get a mutable reference to the dependencies of the `dependency`
+        let added_dependencies = dependencies.entry(dependency.to_string()).or_insert_with(HashSet::new);
+        added_dependencies.insert(cell_address.clone());
+    }
+
+    // println!("DEPENDENCIES after add: {:?}", dependencies);
+
+    update_dependencies(cell_address.clone(), dependencies, exprs, cells, cell_errors, dependers);
+}
+
