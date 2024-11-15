@@ -1,19 +1,21 @@
+use log::info;
+use rsheet_lib::cell_expr::{CellArgument, CellExpr, CellExprEvalError};
+use rsheet_lib::cell_value::CellValue;
+use rsheet_lib::cells::column_number_to_name;
 use rsheet_lib::command::{CellIdentifier, Command};
 use rsheet_lib::connect::{
     Connection, Manager, ReadMessageResult, Reader, WriteMessageResult, Writer,
 };
 use rsheet_lib::replies::Reply;
-use rsheet_lib::cell_value::CellValue;
-use rsheet_lib::cell_expr::{CellArgument, CellExpr, CellExprEvalError};
-use rsheet_lib::cells::{column_number_to_name, column_name_to_number};
-use std::error::Error;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::sync::Mutex;
-use log::info;
-use std::process;
-// use lazy_static::lazy_static;
+use std::error::Error;
+// use std::process;
+use std::io::{BufReader, BufWriter};
+use std::sync::{Arc, Mutex};
 
+use std::thread;
+// use lazy_static::lazy_static;
 
 type CellMap = Mutex<HashMap<String, CellValue>>;
 type ExprMap = Mutex<HashMap<String, String>>;
@@ -28,26 +30,84 @@ lazy_static::lazy_static! {
     static ref CELL_ERRORS: ExprMap = Mutex::new(HashMap::new());
 }
 
+// ===================== STAGE 3 ============================
+
+// SenderHandle to manage each sender's commands sequentially
+struct SenderHandle {
+    order_mutex: Mutex<()>, // Ensures sequential processing for a sender
+}
+
 pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
 where
     M: Manager,
 {
-    let (mut recv, mut send) = match manager.accept_new_connection() {
-        Connection::NewConnection { reader, writer } => (reader, writer),
-        Connection::NoMoreConnections => {
-            return Ok(());
-        }
-    };
+    let mut sender_map: HashMap<String, Arc<SenderHandle>> = HashMap::new();
 
     loop {
-        info!("Just got message");
+        info!("Just got a message!");
+        match manager.accept_new_connection() {
+            Connection::NewConnection { mut reader, mut writer } => {
+                println!("Starting Server...");
+                let sender_name = get_sender_name(&mut reader);
+                let sender_handle = sender_map
+                    .entry(sender_name.clone())
+                    .or_insert_with(|| Arc::new(SenderHandle {
+                        order_mutex: Mutex::new(()),
+                    }));
+
+                let sender_handle = Arc::clone(sender_handle);
+
+                println!("Connection done....");
+                // Spawn a thread to handle the new connection
+                thread::spawn(move || {
+                    println!("Going to handle connection...");
+                    if let Err(e) = handle_connection(sender_handle, &mut reader, &mut writer) {
+                        eprintln!("Error handling connection for {}: {}", sender_name, e);
+                    }
+                });
+            }
+            Connection::NoMoreConnections => break,
+        }
+    }
+
+    Ok(())
+}
+
+// Helper to extract the sender name
+fn get_sender_name(reader: &mut dyn Reader) -> String {
+    match reader.read_message() {
+        ReadMessageResult::Message(command) => {
+            // Extract the sender name from the command string
+            let sender_name = command.splitn(2, ":").next().unwrap_or("").trim();
+            sender_name.to_string()
+        }
+        ReadMessageResult::ConnectionClosed => {
+            // Handle connection closed
+            String::new()
+        }
+        ReadMessageResult::Err(_) => {
+            // Handle error case
+            String::new()
+        }
+    }
+}
+
+
+// Function to handle each connection from a sender
+fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mut dyn Writer) -> Result<(), Box<dyn Error>> {
+    loop {
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
+                println!("Handling connection....");
+                let _lock = reader.order_mutex.lock().unwrap();
+
+                // Handle the message
                 let reply = match msg.parse::<Command>() {
                     Ok(command) => match command {
-                        Command::Get { cell_identifier } => handle_get(&cell_identifier),
+                        Command::Get { cell_identifier } => {
+                            handle_get(&cell_identifier)
+                        },
                         Command::Set { cell_identifier, cell_expr } => {
-                            // Check for None
                             if let Some(reply) = handle_set(&cell_identifier, &cell_expr) {
                                 reply
                             } else {
@@ -55,11 +115,11 @@ where
                             }
                         }
                     },
-                    Err(e) => Reply::Error("tickle tickle".to_string()),
+                    Err(e) => Reply::Error(format!("Error parsing command: {}", e)),
                 };
 
                 match send.write_message(reply) {
-                    WriteMessageResult::Ok => {},
+                    WriteMessageResult::Ok => {}
                     WriteMessageResult::ConnectionClosed => break,
                     WriteMessageResult::Err(e) => return Err(Box::new(e)),
                 }
@@ -73,14 +133,6 @@ where
 
 // ===================== HELPERS ============================
 
-// Converts hashmap arguments
-fn convert_to_arguments(cells: &HashMap<String, CellValue>) -> HashMap<String, CellArgument> {
-    cells.iter()
-        .map(|(key, value)| (key.clone(), CellArgument::Value(value.clone())))
-        .collect()
-}
-
-
 // Converts CellIdentifier into String
 fn cell_to_string(cell_identifier: &CellIdentifier) -> String {
     let col_name = column_number_to_name(cell_identifier.col);
@@ -90,28 +142,16 @@ fn cell_to_string(cell_identifier: &CellIdentifier) -> String {
     format!("{}{}", col_name, row)
 }
 
-// Create CellValue
-fn new_cell_value(value: &str) -> CellValue {
-    if value.is_empty() {
-        // None
-        CellValue::None
-    } else if let Ok(int_value) = value.parse::<i64>() {
-        // Integer
-        CellValue::Int(int_value)
-    } else if value.starts_with("\"") && value.ends_with("\"") {
-        // String
-        let string_value = value[1..value.len() - 1].to_string();
-        CellValue::String(string_value)
-    } else {
-        // Error
-        eprintln!("Error parsing: Invalid value");
-        process::exit(1);
-    }
-}
-
 // Evalutes expression
-fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_address: String, cell_errors: &mut HashMap<String, String>,
-    exprs: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>, dependencies: &mut HashMap<String, HashSet<String>>) {
+fn evaluate_expr(
+    expr: CellExpr,
+    cells: &mut HashMap<String, CellValue>,
+    cell_address: String,
+    cell_errors: &mut HashMap<String, String>,
+    exprs: &mut HashMap<String, String>,
+    dependers: &mut HashMap<String, HashSet<String>>,
+    dependencies: &mut HashMap<String, HashSet<String>>,
+) {
     let mut new_dependers: HashSet<String> = HashSet::new();
     let variables = parse_expr_args(&expr, &cells, &mut new_dependers);
 
@@ -133,7 +173,15 @@ fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_ad
 
     // println!("Finished Evaluating...: {}", cell_address);
 
-    process_dependencies(new_dependers.clone(), cell_address.clone(), exprs, cells, cell_errors, dependers, dependencies);
+    process_dependencies(
+        new_dependers.clone(),
+        cell_address.clone(),
+        exprs,
+        cells,
+        cell_errors,
+        dependers,
+        dependencies,
+    );
 }
 
 // ===================== STAGE 1 ============================
@@ -142,8 +190,8 @@ fn evaluate_expr(expr: CellExpr, cells: &mut HashMap<String, CellValue>, cell_ad
 fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     let cell_address = cell_to_string(cell_identifier);
 
-    let mut cell_errors = CELL_ERRORS.lock().unwrap();
-    let mut cells = CELL_MAP.lock().unwrap();
+    let cell_errors = CELL_ERRORS.lock().unwrap();
+    let cells = CELL_MAP.lock().unwrap();
     // let mut exprs = EXPR_MAP.lock().unwrap();
     // if let Some(cell_expr) = exprs.get(&cell_address) {
     //     let expr = CellExpr::new(cell_expr);
@@ -152,7 +200,10 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 
     // Check if any cells are depending on errors
     if let Some(error) = cell_errors.get(&cell_address) {
-        return Reply::Error(format!("Cannot get cell {}: it depends on an error - {}", cell_address, error));
+        return Reply::Error(format!(
+            "Cannot get cell {}: it depends on an error - {}",
+            cell_address, error
+        ));
     }
 
     // Otherwise, proceed with checking cells
@@ -175,7 +226,15 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply
 
     exprs.insert(cell_address.clone(), (*cell_expr).to_string());
 
-    evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors, &mut exprs, &mut dependers, &mut dependencies);
+    evaluate_expr(
+        expr,
+        &mut cells,
+        cell_address.clone(),
+        &mut cell_errors,
+        &mut exprs,
+        &mut dependers,
+        &mut dependencies,
+    );
     // update dependencies
 
     None
@@ -184,7 +243,11 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply
 // ===================== STAGE 2 ============================
 
 // Function to parse the cell expression into the hashmap of cellvalues
-fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>, new_dependers: &mut HashSet<String>) -> HashMap<String, CellArgument> {
+fn parse_expr_args(
+    cell_expr: &CellExpr,
+    cells: &HashMap<String, CellValue>,
+    new_dependers: &mut HashSet<String>,
+) -> HashMap<String, CellArgument> {
     // Check for args
     let vars = cell_expr.find_variable_names();
     if vars.is_empty() {
@@ -226,12 +289,16 @@ fn parse_expr_args(cell_expr: &CellExpr, cells: &HashMap<String, CellValue>, new
 }
 
 // Get value from cell
-fn get_value(var: &str, cells: &HashMap<String, CellValue>) -> CellValue{
+fn get_value(var: &str, cells: &HashMap<String, CellValue>) -> CellValue {
     cells.get(var).cloned().unwrap_or(CellValue::None)
 }
 
 // Get vector of cells
-fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: &mut HashSet<String>) -> CellArgument {
+fn get_vector(
+    coords: Vec<&str>,
+    cells: &HashMap<String, CellValue>,
+    dependers: &mut HashSet<String>,
+) -> CellArgument {
     // Extract start and end coordinates
     let start = coords[0];
     let end = coords[1];
@@ -263,7 +330,11 @@ fn get_vector(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: 
 }
 
 // Get matrix of cells
-fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: &mut HashSet<String>) -> CellArgument {
+fn get_matrix(
+    coords: Vec<&str>,
+    cells: &HashMap<String, CellValue>,
+    dependers: &mut HashSet<String>,
+) -> CellArgument {
     // Extract start and end coordinates
     let start = coords[0];
     let end = coords[1];
@@ -290,26 +361,47 @@ fn get_matrix(coords: Vec<&str>, cells: &HashMap<String, CellValue>, dependers: 
 // ===================== STAGE 4 + 5 ============================
 
 // Update dependencies TODO:
-fn update_dependencies(cell_address: String, dependencies: &mut HashMap<String, HashSet<String>>, exprs: &mut HashMap<String, String>, cells: &mut HashMap<String, CellValue>,
-    cell_errors: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>) {
+fn update_dependencies(
+    cell_address: String,
+    dependencies: &mut HashMap<String, HashSet<String>>,
+    exprs: &mut HashMap<String, String>,
+    cells: &mut HashMap<String, CellValue>,
+    cell_errors: &mut HashMap<String, String>,
+    dependers: &mut HashMap<String, HashSet<String>>,
+) {
     let mut dependencies_clone = dependencies.clone();
-    let deps = dependencies_clone.entry(cell_address.clone()).or_insert_with(HashSet::new);
+    let deps = dependencies_clone
+        .entry(cell_address.clone())
+        .or_insert_with(HashSet::new);
 
     // println!("DEPS: {:?}", deps);
 
     for dep in deps.iter() {
         let expr_string = exprs.entry(dep.clone()).or_insert_with(|| String::new());
         let expr = CellExpr::new(expr_string); // No need to insert
-        evaluate_expr(expr, cells, dep.clone(), cell_errors, exprs, dependers, dependencies); // Should never have a circular case
+        evaluate_expr(
+            expr,
+            cells,
+            dep.clone(),
+            cell_errors,
+            exprs,
+            dependers,
+            dependencies,
+        ); // Should never have a circular case
     }
 
     // println!("Finished updating....");
 }
 
-
-fn process_dependencies(new_dependers: HashSet<String>, cell_address: String, exprs: &mut HashMap<String, String>, cells: &mut HashMap<String, CellValue>,
-    cell_errors: &mut HashMap<String, String>, dependers: &mut HashMap<String, HashSet<String>>, dependencies: &mut HashMap<String, HashSet<String>>) {
-
+fn process_dependencies(
+    new_dependers: HashSet<String>,
+    cell_address: String,
+    exprs: &mut HashMap<String, String>,
+    cells: &mut HashMap<String, CellValue>,
+    cell_errors: &mut HashMap<String, String>,
+    dependers: &mut HashMap<String, HashSet<String>>,
+    dependencies: &mut HashMap<String, HashSet<String>>,
+) {
     // println!("Processing....: {}", cell_address);
 
     // let empty_old: HashSet<String> = HashSet::new();
@@ -336,12 +428,20 @@ fn process_dependencies(new_dependers: HashSet<String>, cell_address: String, ex
     // Add new dependencies (for added dependers)
     for dependency in added_dependers {
         // Use `entry` to get a mutable reference to the dependencies of the `dependency`
-        let added_dependencies = dependencies.entry(dependency.to_string()).or_insert_with(HashSet::new);
+        let added_dependencies = dependencies
+            .entry(dependency.to_string())
+            .or_insert_with(HashSet::new);
         added_dependencies.insert(cell_address.clone());
     }
 
     // println!("DEPENDENCIES after add: {:?}", dependencies);
 
-    update_dependencies(cell_address.clone(), dependencies, exprs, cells, cell_errors, dependers);
+    update_dependencies(
+        cell_address.clone(),
+        dependencies,
+        exprs,
+        cells,
+        cell_errors,
+        dependers,
+    );
 }
-
