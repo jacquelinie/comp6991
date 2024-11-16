@@ -41,8 +41,12 @@ where
     M: Manager,
 {
     let (mut recv, mut send) = match manager.accept_new_connection() {
-        Connection::NewConnection { reader, writer } => (reader, writer),
+        Connection::NewConnection { reader, writer } => {
+            println!("TESTSTST 11111");
+            (reader, writer)
+        },
         Connection::NoMoreConnections => {
+            println!("TESTSTST 22222");
             return Ok(());
         }
     };
@@ -51,6 +55,7 @@ where
         info!("Just got message");
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
+                println!("Parsing message... {:?}", msg);
                 let reply = match msg.parse::<Command>() {
                     Ok(command) => match command {
                         Command::Get { cell_identifier } => handle_get(&cell_identifier),
