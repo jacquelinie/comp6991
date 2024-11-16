@@ -390,129 +390,163 @@ fn process_dependencies(
     );
 }
 
-// ===================== TESTS ============================
 
+// ===================== TESTS ============================
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_run_cell_none() {
-        let result = CellExpr::new("()").evaluate(&HashMap::new());
-        assert_eq!(result, Ok(CellValue::None));
+    // Clear Storage between tests
+    fn clear_storage() {
+        CELL_MAP.lock().unwrap().clear();
+        EXPR_MAP.lock().unwrap().clear();
+        DEPENDENCIES.lock().unwrap().clear();
+        DEPENDERS.lock().unwrap().clear();
+        CELL_ERRORS.lock().unwrap().clear();
     }
 
+    // 1. Test initialization of cell maps and dependency maps
     #[test]
-    fn test_run_values_only() {
-        let result = CellExpr::new("2 + 2").evaluate(&HashMap::new());
-        assert_eq!(result, Ok(CellValue::Int(4)));
+    fn test_initialization() {
+        clear_storage();
+        let cells = CELL_MAP.lock().unwrap();
+        assert!(cells.is_empty());
+
+        let cell_errors = CELL_ERRORS.lock().unwrap();
+        assert!(cell_errors.is_empty());
+
+        let exprs = EXPR_MAP.lock().unwrap();
+        assert!(exprs.is_empty());
+
+        let dependencies = DEPENDENCIES.lock().unwrap();
+        assert!(dependencies.is_empty());
+
+        let dependers = DEPENDERS.lock().unwrap();
+        assert!(dependers.is_empty());
     }
 
+    // 2. Test `cell_to_string` function with a sample CellIdentifier
     #[test]
-    fn test_run_value() {
-        let result = CellExpr::new("2").evaluate(&HashMap::new());
-        assert_eq!(result, Ok(CellValue::Int(2)));
+    fn test_cell_to_string() {
+        let cell_identifier = CellIdentifier { row: 0, col: 1 }; // Expected "B1"
+        assert_eq!(cell_to_string(&cell_identifier), "B1");
     }
 
+    // 3. Test `handle_set` for a valid expression
     #[test]
-    fn test_run_cell_vector() {
-        let vector = CellArgument::Vector(vec![
-            CellValue::Int(1),
-            CellValue::Int(2),
-            CellValue::Int(3),
-        ]);
-        let result =
-            CellExpr::new("sum(A1_A3)").evaluate(&HashMap::from([("A1_A3".to_string(), vector)]));
-        assert_eq!(result, Ok(CellValue::Int(6)));
+    fn test_handle_set_valid_expr() {
+        let cell_id = CellIdentifier { row: 0, col: 1 }; // Cell "B1"
+        let cell_expr = "5";
+
+        // Execute
+        assert!(handle_set(&cell_id, cell_expr).is_none());
+
+        // Check CELL_MAP for the updated value
+        let cells = CELL_MAP.lock().unwrap();
+        let cell_address = cell_to_string(&cell_id);
+        assert_eq!(cells.get(&cell_address), Some(&CellValue::Int(5)));
     }
 
+    // 4. Test `evaluate_expr` for simple evaluation
     #[test]
-    fn test_run_cell_value() {
-        let values = HashMap::from([
-            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
-            ("A2".to_string(), CellArgument::Value(CellValue::Int(2))),
-            ("A3".to_string(), CellArgument::Value(CellValue::Int(3))),
-        ]);
-        let result = CellExpr::new("A1 + A2 + A3").evaluate(&values);
+    fn test_evaluate_expr() {
+        let mut cells = HashMap::new();
+        let mut exprs = HashMap::new();
+        let mut cell_errors = HashMap::new();
+        let mut dependers = HashMap::new();
+        let mut dependencies = HashMap::new();
 
-        assert_eq!(
-            CellExpr::new("A1 + A2 + A3").find_variable_names(),
-            vec!["A1".to_string(), "A2".to_string(), "A3".to_string()]
+        let cell_address = "A1".to_string();
+        let expr = CellExpr::new("10");
+
+        evaluate_expr(
+            expr,
+            &mut cells,
+            cell_address.clone(),
+            &mut cell_errors,
+            &mut exprs,
+            &mut dependers,
+            &mut dependencies,
         );
-        assert_eq!(result, Ok(CellValue::Int(6)));
+
+        assert_eq!(cells.get(&cell_address), Some(&CellValue::Int(10)));
+        assert!(cell_errors.get(&cell_address).is_none());
     }
 
+    // 5. Test `evaluate_expr` with a cell expression error
     #[test]
-    fn test_run_cell_matrix() {
-        let matrix = CellArgument::Matrix(vec![
-            vec![CellValue::Int(1), CellValue::Int(2)],
-            vec![CellValue::Int(3), CellValue::Int(4)],
-        ]);
-        let result =
-            CellExpr::new("sum(A1_B2)").evaluate(&HashMap::from([("A1_B2".to_string(), matrix)]));
-        assert_eq!(result, Ok(CellValue::Int(10)));
+    fn test_evaluate_expr_with_error() {
+        let mut cells = HashMap::new();
+        let mut exprs = HashMap::new();
+        let mut cell_errors = HashMap::new();
+        let mut dependers = HashMap::new();
+        let mut dependencies = HashMap::new();
+
+        let cell_address = "A1".to_string();
+        let cell_address_2 = "A2".to_string();
+
+        let expr = CellExpr::new("invalid");
+        let expr_2 = CellExpr::new("A1 + 1");
+
+        evaluate_expr(
+            expr,
+            &mut cells,
+            cell_address.clone(),
+            &mut cell_errors,
+            &mut exprs,
+            &mut dependers,
+            &mut dependencies,
+        );
+        evaluate_expr(
+            expr_2,
+            &mut cells,
+            cell_address_2.clone(),
+            &mut cell_errors,
+            &mut exprs,
+            &mut dependers,
+            &mut dependencies,
+        );
+
+        assert!(cell_errors.contains_key(&cell_address_2));
     }
 
+    // 6. Test `parse_expr_args` for argument parsing
     #[test]
-    fn test_run_cell_error() {
-        let result = CellExpr::new("asdf").evaluate(&HashMap::new());
-        assert!(matches!(result, Ok(CellValue::Error(_))));
+    fn test_parse_expr_args() {
+        let mut cells = HashMap::new();
+        cells.insert("B1".to_string(), CellValue::Int(5));
+        let expr = CellExpr::new("B1 + 10");
+        let mut new_dependers = HashSet::new();
+
+        let args = parse_expr_args(&expr, &cells, &mut new_dependers);
+        assert!(args.contains_key("B1"));
+        assert_eq!(args["B1"], CellArgument::Value(CellValue::Int(5)));
     }
 
+    // 7. Test dependency management functions
     #[test]
-    fn test_depend_on_error() {
-        let values = HashMap::from([
-            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
-            (
-                "A2".to_string(),
-                CellArgument::Value(CellValue::Error("some existing error".to_string())),
-            ),
-        ]);
-        let result = CellExpr::new("A1 + A2").evaluate(&values);
-        assert!(matches!(
-            result,
-            Err(CellExprEvalError::VariableDependsOnError)
-        ));
-    }
+    fn test_process_dependencies() {
 
-    #[test]
-    fn test_depend_on_error_vector() {
-        let values = HashMap::from([
-            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
-            (
-                "A2_A3".to_string(),
-                CellArgument::Vector(vec![
-                    CellValue::Int(10),
-                    CellValue::Error("some existing error".to_string()),
-                ]),
-            ),
-        ]);
-        let result = CellExpr::new("A1 + sum(A2_A3)").evaluate(&values);
-        assert!(matches!(
-            result,
-            Err(CellExprEvalError::VariableDependsOnError)
-        ));
-    }
+        let mut cells = HashMap::new();
+        let mut exprs = HashMap::new();
+        let mut cell_errors = HashMap::new();
+        let mut dependers = HashMap::new();
+        let mut dependencies = HashMap::new();
 
-    #[test]
-    fn test_depend_on_error_matrix() {
-        let values = HashMap::from([
-            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
-            (
-                "A2_B3".to_string(),
-                CellArgument::Matrix(vec![
-                    vec![
-                        CellValue::Int(10),
-                        CellValue::Error("some existing error".to_string()),
-                    ],
-                    vec![CellValue::Int(20), CellValue::Int(50)],
-                ]),
-            ),
-        ]);
-        let result = CellExpr::new("A1 + sum(A2_B3)").evaluate(&values);
-        assert!(matches!(
-            result,
-            Err(CellExprEvalError::VariableDependsOnError)
-        ));
+        let cell_address = "A1".to_string();
+        let new_dependers: HashSet<String> = vec!["B1".to_string()].into_iter().collect();
+
+        process_dependencies(
+            new_dependers.clone(),
+            cell_address.clone(),
+            &mut exprs,
+            &mut cells,
+            &mut cell_errors,
+            &mut dependers,
+            &mut dependencies,
+        );
+
+        assert!(dependers.contains_key(&cell_address));
+        assert_eq!(dependers[&cell_address], new_dependers);
     }
 }
