@@ -367,3 +367,132 @@ fn process_dependencies(
         dependers,
     );
 }
+
+
+
+// ===================== TESTS ============================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_cell_none() {
+        let result = CellExpr::new("()").evaluate(&HashMap::new());
+        assert_eq!(result, Ok(CellValue::None));
+    }
+
+    #[test]
+    fn test_run_values_only() {
+        let result = CellExpr::new("2 + 2").evaluate(&HashMap::new());
+        assert_eq!(result, Ok(CellValue::Int(4)));
+    }
+
+    #[test]
+    fn test_run_value() {
+        let result = CellExpr::new("2").evaluate(&HashMap::new());
+        assert_eq!(result, Ok(CellValue::Int(2)));
+    }
+
+    #[test]
+    fn test_run_cell_vector() {
+        let vector = CellArgument::Vector(vec![
+            CellValue::Int(1),
+            CellValue::Int(2),
+            CellValue::Int(3),
+        ]);
+        let result =
+            CellExpr::new("sum(A1_A3)").evaluate(&HashMap::from([("A1_A3".to_string(), vector)]));
+        assert_eq!(result, Ok(CellValue::Int(6)));
+    }
+
+    #[test]
+    fn test_run_cell_value() {
+        let values = HashMap::from([
+            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
+            ("A2".to_string(), CellArgument::Value(CellValue::Int(2))),
+            ("A3".to_string(), CellArgument::Value(CellValue::Int(3))),
+        ]);
+        let result = CellExpr::new("A1 + A2 + A3").evaluate(&values);
+
+        assert_eq!(
+            CellExpr::new("A1 + A2 + A3").find_variable_names(),
+            vec!["A1".to_string(), "A2".to_string(), "A3".to_string()]
+        );
+        assert_eq!(result, Ok(CellValue::Int(6)));
+    }
+
+    #[test]
+    fn test_run_cell_matrix() {
+        let matrix = CellArgument::Matrix(vec![
+            vec![CellValue::Int(1), CellValue::Int(2)],
+            vec![CellValue::Int(3), CellValue::Int(4)],
+        ]);
+        let result =
+            CellExpr::new("sum(A1_B2)").evaluate(&HashMap::from([("A1_B2".to_string(), matrix)]));
+        assert_eq!(result, Ok(CellValue::Int(10)));
+    }
+
+    #[test]
+    fn test_run_cell_error() {
+        let result = CellExpr::new("asdf").evaluate(&HashMap::new());
+        assert!(matches!(result, Ok(CellValue::Error(_))));
+    }
+
+    #[test]
+    fn test_depend_on_error() {
+        let values = HashMap::from([
+            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
+            (
+                "A2".to_string(),
+                CellArgument::Value(CellValue::Error("some existing error".to_string())),
+            ),
+        ]);
+        let result = CellExpr::new("A1 + A2").evaluate(&values);
+        assert!(matches!(
+            result,
+            Err(CellExprEvalError::VariableDependsOnError)
+        ));
+    }
+
+    #[test]
+    fn test_depend_on_error_vector() {
+        let values = HashMap::from([
+            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
+            (
+                "A2_A3".to_string(),
+                CellArgument::Vector(vec![
+                    CellValue::Int(10),
+                    CellValue::Error("some existing error".to_string()),
+                ]),
+            ),
+        ]);
+        let result = CellExpr::new("A1 + sum(A2_A3)").evaluate(&values);
+        assert!(matches!(
+            result,
+            Err(CellExprEvalError::VariableDependsOnError)
+        ));
+    }
+
+    #[test]
+    fn test_depend_on_error_matrix() {
+        let values = HashMap::from([
+            ("A1".to_string(), CellArgument::Value(CellValue::Int(1))),
+            (
+                "A2_B3".to_string(),
+                CellArgument::Matrix(vec![
+                    vec![
+                        CellValue::Int(10),
+                        CellValue::Error("some existing error".to_string()),
+                    ],
+                    vec![CellValue::Int(20), CellValue::Int(50)],
+                ]),
+            ),
+        ]);
+        let result = CellExpr::new("A1 + sum(A2_B3)").evaluate(&values);
+        assert!(matches!(
+            result,
+            Err(CellExprEvalError::VariableDependsOnError)
+        ));
+    }
+}
