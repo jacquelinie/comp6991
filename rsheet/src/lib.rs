@@ -13,14 +13,12 @@ use std::error::Error;
 use std::sync::{Mutex, Arc};
 
 use std::thread;
-// use std::process;
-// use lazy_static::lazy_static;
 
 type CellMap = Mutex<HashMap<String, CellValue>>;
 type ExprMap = Mutex<HashMap<String, String>>;
 type DepMap = Mutex<HashMap<String, HashSet<String>>>;
 
-// Initialize the cell map globally or within the server instance
+// Initialize the all global maps
 lazy_static::lazy_static! {
     static ref CELL_MAP: CellMap = Mutex::new(HashMap::new());
     static ref EXPR_MAP: ExprMap = Mutex::new(HashMap::new());
@@ -57,11 +55,13 @@ where
                 let sender_handle = Arc::clone(sender_handle);
 
                 // Spawn a thread to handle the new connection
-                thread::spawn(move || {
+                let handle = thread::spawn(move || {
                     if let Err(e) = handle_connection(sender_handle, &mut reader, &mut writer) {
                         eprintln!("Error handling connection for {}: {}", sender_name, e);
                     }
                 });
+
+                handle.join().unwrap();
             }
             Connection::NoMoreConnections => break,
         }
@@ -76,6 +76,7 @@ fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mu
     loop {
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
+                println!("GOT A MESSAGE: {:?}", msg);
                 // Acquire the lock for the sender's sequence
                 let _lock = reader.order_mutex.lock().unwrap();
 
