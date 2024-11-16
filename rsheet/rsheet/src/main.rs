@@ -19,8 +19,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let args = Args::parse();
 
-    println!("ARGS: {:?}", args);
-    
     if let Some(addr) = args.addr {
         let addr = resolve_address(&addr)?;
         let manager = ConnectionManager::launch(addr.ip(), addr.port());
