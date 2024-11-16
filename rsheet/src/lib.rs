@@ -10,11 +10,8 @@ use rsheet_lib::replies::Reply;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
+use std::sync::Mutex;
 // use std::process;
-use std::io::{BufReader, BufWriter};
-use std::sync::{Arc, Mutex};
-
-use std::thread;
 // use lazy_static::lazy_static;
 
 type CellMap = Mutex<HashMap<String, CellValue>>;
@@ -30,84 +27,29 @@ lazy_static::lazy_static! {
     static ref CELL_ERRORS: ExprMap = Mutex::new(HashMap::new());
 }
 
-// ===================== STAGE 3 ============================
-
-// SenderHandle to manage each sender's commands sequentially
-struct SenderHandle {
-    order_mutex: Mutex<()>, // Ensures sequential processing for a sender
-}
-
 pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
 where
     M: Manager,
 {
-    let mut sender_map: HashMap<String, Arc<SenderHandle>> = HashMap::new();
+    let (mut recv, mut send) = match manager.accept_new_connection() {
+        Connection::NewConnection { reader, writer } => (reader, writer),
+        Connection::NoMoreConnections => {
+            return Ok(());
+        }
+    };
 
     loop {
-        info!("Just got a message!");
-        match manager.accept_new_connection() {
-            Connection::NewConnection { mut reader, mut writer } => {
-                println!("Starting Server...");
-                let sender_name = get_sender_name(&mut reader);
-                let sender_handle = sender_map
-                    .entry(sender_name.clone())
-                    .or_insert_with(|| Arc::new(SenderHandle {
-                        order_mutex: Mutex::new(()),
-                    }));
-
-                let sender_handle = Arc::clone(sender_handle);
-
-                println!("Connection done....");
-                // Spawn a thread to handle the new connection
-                thread::spawn(move || {
-                    println!("Going to handle connection...");
-                    if let Err(e) = handle_connection(sender_handle, &mut reader, &mut writer) {
-                        eprintln!("Error handling connection for {}: {}", sender_name, e);
-                    }
-                });
-            }
-            Connection::NoMoreConnections => break,
-        }
-    }
-
-    Ok(())
-}
-
-// Helper to extract the sender name
-fn get_sender_name(reader: &mut dyn Reader) -> String {
-    match reader.read_message() {
-        ReadMessageResult::Message(command) => {
-            // Extract the sender name from the command string
-            let sender_name = command.splitn(2, ":").next().unwrap_or("").trim();
-            sender_name.to_string()
-        }
-        ReadMessageResult::ConnectionClosed => {
-            // Handle connection closed
-            String::new()
-        }
-        ReadMessageResult::Err(_) => {
-            // Handle error case
-            String::new()
-        }
-    }
-}
-
-
-// Function to handle each connection from a sender
-fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mut dyn Writer) -> Result<(), Box<dyn Error>> {
-    loop {
+        info!("Just got message");
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
-                println!("Handling connection....");
-                let _lock = reader.order_mutex.lock().unwrap();
-
-                // Handle the message
                 let reply = match msg.parse::<Command>() {
                     Ok(command) => match command {
-                        Command::Get { cell_identifier } => {
-                            handle_get(&cell_identifier)
-                        },
-                        Command::Set { cell_identifier, cell_expr } => {
+                        Command::Get { cell_identifier } => handle_get(&cell_identifier),
+                        Command::Set {
+                            cell_identifier,
+                            cell_expr,
+                        } => {
+                            // Check for None
                             if let Some(reply) = handle_set(&cell_identifier, &cell_expr) {
                                 reply
                             } else {
@@ -115,7 +57,7 @@ fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mu
                             }
                         }
                     },
-                    Err(e) => Reply::Error(format!("Error parsing command: {}", e)),
+                    Err(e) => Reply::Error(e),
                 };
 
                 match send.write_message(reply) {
@@ -153,7 +95,7 @@ fn evaluate_expr(
     dependencies: &mut HashMap<String, HashSet<String>>,
 ) {
     let mut new_dependers: HashSet<String> = HashSet::new();
-    let variables = parse_expr_args(&expr, &cells, &mut new_dependers);
+    let variables = parse_expr_args(&expr, cells, &mut new_dependers);
 
     // println!("Evaluating....");
 
@@ -192,11 +134,6 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
 
     let cell_errors = CELL_ERRORS.lock().unwrap();
     let cells = CELL_MAP.lock().unwrap();
-    // let mut exprs = EXPR_MAP.lock().unwrap();
-    // if let Some(cell_expr) = exprs.get(&cell_address) {
-    //     let expr = CellExpr::new(cell_expr);
-    //     evaluate_expr(expr, &mut cells, cell_address.clone(), &mut cell_errors, &mut exprs);
-    // }
 
     // Check if any cells are depending on errors
     if let Some(error) = cell_errors.get(&cell_address) {
@@ -271,16 +208,16 @@ fn parse_expr_args(
 
                 // Matrix: both row and column are different
                 if row1 != row2 && col1 != col2 {
-                    value = get_matrix(coords, &cells, new_dependers);
+                    value = get_matrix(coords, cells, new_dependers);
                 }
                 // Vector: either rows or columns are the same
                 else if row1 == row2 || col1 == col2 {
-                    value = get_vector(coords, &cells, new_dependers);
+                    value = get_vector(coords, cells, new_dependers);
                 }
             }
         } else {
             new_dependers.insert(var.clone());
-            value = CellArgument::Value(get_value(&var, &cells));
+            value = CellArgument::Value(get_value(&var, cells));
         }
         // Insert
         results.insert(var, value);
@@ -360,7 +297,7 @@ fn get_matrix(
 
 // ===================== STAGE 4 + 5 ============================
 
-// Update dependencies TODO:
+// Update dependencies of cell address based on new value
 fn update_dependencies(
     cell_address: String,
     dependencies: &mut HashMap<String, HashSet<String>>,
@@ -370,14 +307,11 @@ fn update_dependencies(
     dependers: &mut HashMap<String, HashSet<String>>,
 ) {
     let mut dependencies_clone = dependencies.clone();
-    let deps = dependencies_clone
-        .entry(cell_address.clone())
-        .or_insert_with(HashSet::new);
+    let deps = dependencies_clone.entry(cell_address.clone()).or_default();
 
-    // println!("DEPS: {:?}", deps);
-
+    // Go through any dependencies and update
     for dep in deps.iter() {
-        let expr_string = exprs.entry(dep.clone()).or_insert_with(|| String::new());
+        let expr_string = exprs.entry(dep.clone()).or_default();
         let expr = CellExpr::new(expr_string); // No need to insert
         evaluate_expr(
             expr,
@@ -389,10 +323,9 @@ fn update_dependencies(
             dependencies,
         ); // Should never have a circular case
     }
-
-    // println!("Finished updating....");
 }
 
+// Process all dependencies and check for new and remove old ones
 fn process_dependencies(
     new_dependers: HashSet<String>,
     cell_address: String,
@@ -402,9 +335,6 @@ fn process_dependencies(
     dependers: &mut HashMap<String, HashSet<String>>,
     dependencies: &mut HashMap<String, HashSet<String>>,
 ) {
-    // println!("Processing....: {}", cell_address);
-
-    // let empty_old: HashSet<String> = HashSet::new();
     let old_dependers = dependers.remove(&cell_address).unwrap_or_default();
 
     let added_dependers = new_dependers.difference(&old_dependers);
@@ -412,8 +342,6 @@ fn process_dependencies(
 
     // Insert new dependers
     dependers.insert(cell_address.clone(), new_dependers.clone());
-
-    // println!("DEFENDERS: {:?}", dependers);
 
     // Edit old dependencies (for removed dependers)
     for dependency in removed_dependers {
@@ -423,18 +351,12 @@ fn process_dependencies(
         }
     }
 
-    // println!("DEPENDENCIES after remove: {:?}", dependencies);
-
     // Add new dependencies (for added dependers)
     for dependency in added_dependers {
-        // Use `entry` to get a mutable reference to the dependencies of the `dependency`
-        let added_dependencies = dependencies
-            .entry(dependency.to_string())
-            .or_insert_with(HashSet::new);
+        // Use entry to get a mutable reference to the dependencies of the dependency
+        let added_dependencies = dependencies.entry(dependency.to_string()).or_default();
         added_dependencies.insert(cell_address.clone());
     }
-
-    // println!("DEPENDENCIES after add: {:?}", dependencies);
 
     update_dependencies(
         cell_address.clone(),
