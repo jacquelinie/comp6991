@@ -76,7 +76,6 @@ fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mu
     loop {
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
-                println!("GOT A MESSAGE: {:?}", msg);
                 // Acquire the lock for the sender's sequence
                 let _lock = reader.order_mutex.lock().unwrap();
 
