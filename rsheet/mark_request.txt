@@ -12,14 +12,14 @@ to receive marks for the Design Questions.
 
 
 ## Question 2:
-Scalar: value = CellArgument::Value(get_value(&var, cells));
-Vector: value = get_vector(coords, cells, new_dependers);
-Matrix: value = get_matrix(coords, cells, new_dependers);
+Scalar: src/lib.rs:326
+Vector: src/lib.rs:321
+Matrix: src/lib.rs:317
 
 All three types share similar logic in parse_expr_args and get_value functions to retrieve and parse the cell references.
 There is distinct logic for each type, where in get_vector and get_matrix functions, there is different indexing to traverse the vector/matrix. There is also different return types.
 
-Improvement: To consolidate handling further, a general function that accepts coordinates and returns either a Scalar, Vector, or Matrix based on parameters, could be used to reduce duplicate code. Maybe a while loop that can be used to traverse both the rows/columns can be used.
+Improvement: To make handling more consolidated, a general function that accepts coordinates and returns either a Scalar, Vector, or Matrix based on parameters, could be used to reduce duplicate code. Maybe a while loop that can be used to traverse both the rows/columns can be used.
 
 Changes:
 - Add a MatrixList to CellArgument.
@@ -28,6 +28,8 @@ Changes:
 
 
 ## Question 3:
+‘src/lib.rs:22::28’ requires using Mutex with HashMap for shared state management. Mutex allows for concurrent access, and eliminates the risk of race conditions. Rust’s type system prevents this by enforcing Send and Sync trait bounds, ensuring only thread-safe types are shared across threads.
+‘src/lib.rs:68’ uses thread::spawn to create threads for concurrent task execution. However, this raises a possible concurrency bug which attempts to share an Rc (reference-counted pointer). Rust’s type system prohibits Rc in thread::spawn by requiring the Send trait, which led me to use Arc (atomic reference-counted pointer) instead. This prevents unexpected runtime errors, ensuring safe memory sharing across threads.
 
 
 
@@ -36,11 +38,9 @@ Changes:
 
 
 ## Question 5:
-Set A1 5 sets A1 as 5 after being evaluated (1). The cell expression to evaluate A1 is set in the hashmap exprs as A1: 5 (2). Set B1 A1 evaluates A1 and sets B1 as 5 (3). It then adds A1 to the HashSet of B1 in the dependers HashMap to show that B1 depends on A1 (4). In the dependencies HashMap, B1 is added to A1’s HashSet.
-Similarly for Set C1 B1, the same steps are taken. Set A1 7 sets A1 as 7 after evaluation (5), then when processing the dependencies, it sees that B1 is dependent on A1. I then evaluate the new B1 (6), then update B1’s dependencies (7). When updating, I check for what depends on B1- C1. We then reevaluate C1 (8), and check if anything is dependent on C1.
-Finally get C1, I first check if C1 is a CellExprEvalError (9), otherwise it returns the CellValue (10).
+Set A1 5 sets A1 as 5 after being evaluated (‘src/lib.rs:181’) and stores the expression. Set B1 A1 evaluates A1 and sets B1 as 5 and stores its expression (‘src/lib.rs:259’). It then adds A1 to the HashSet of B1 in the Dependers HashMap (‘src/lib.rs:508’). In Dependencies HashMap, B1 is added to A1’s HashSet (‘src/lib.rs:522’).
+Similarly for Set C1 B1, the same steps are taken. Set A1 7 sets A1 as 7, then when processing the dependencies, it sees that B1 is dependent on A1. The new B1 is evaluated, then updates B1’s dependencies. When updating, I check for what depends on B1 (‘src/lib.rs:460’). We then reevaluate C1 (‘src/lib.rs:467’), and check if anything is dependent on C1.
 
-Q5 CODE LINES:
 
 
 # Questions to the Marker (OPTIONAL)
