@@ -354,6 +354,7 @@ dependencies = [
  "env_logger",
  "lazy_static",
  "log",
+ "rhai",
  "rsheet_lib",
 ]
 

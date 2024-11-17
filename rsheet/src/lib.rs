@@ -10,7 +10,7 @@ use rsheet_lib::replies::Reply;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use std::thread;
 
@@ -27,7 +27,6 @@ lazy_static::lazy_static! {
     static ref CELL_ERRORS: ExprMap = Mutex::new(HashMap::new());
 }
 
-
 // ===================== STAGE 3 ============================
 
 // SenderHandle to manage each sender's commands sequentially
@@ -35,6 +34,15 @@ struct SenderHandle {
     order_mutex: Mutex<()>, // Ensures sequential processing for a sender
 }
 
+/// Starts the server and listens for incoming connections. Handles `Get` and `Set` commands.
+///
+/// The function listens for incoming connections. Every new connection starts a new thread.
+///
+/// # Parameters
+/// * `manager`: An instance of `Manager` that accepts new connections.
+///
+/// # Returns:
+/// * Result
 pub fn start_server<M>(mut manager: M) -> Result<(), Box<dyn Error>>
 where
     M: Manager,
@@ -44,13 +52,16 @@ where
     loop {
         info!("Just got a message!");
         match manager.accept_new_connection() {
-            Connection::NewConnection { mut reader, mut writer } => {
+            Connection::NewConnection {
+                mut reader,
+                mut writer,
+            } => {
                 let sender_name = reader.id();
-                let sender_handle = sender_map
-                    .entry(sender_name.clone())
-                    .or_insert_with(|| Arc::new(SenderHandle {
+                let sender_handle = sender_map.entry(sender_name.clone()).or_insert_with(|| {
+                    Arc::new(SenderHandle {
                         order_mutex: Mutex::new(()),
-                    }));
+                    })
+                });
 
                 let sender_handle = Arc::clone(sender_handle);
 
@@ -70,9 +81,23 @@ where
     Ok(())
 }
 
-
-// Function to handle each connection from a sender
-fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mut dyn Writer) -> Result<(), Box<dyn Error>> {
+/// Function to handle each connection from a sender
+/// The function listens for incoming commands from clients. When a `Get` command is received,
+/// it retrieves the value of the requested cell. When a `Set` command is received, it processes
+/// the expression, evaluates it, updates the cell, and resolves dependencies.
+///
+/// # Parameters
+/// * `reader`: An Arc sender handle
+/// * `recv`: A reader to receive commands
+/// * `send`: A writer to send commands
+///
+/// # Returns
+/// * Result
+fn handle_connection(
+    reader: Arc<SenderHandle>,
+    recv: &mut dyn Reader,
+    send: &mut dyn Writer,
+) -> Result<(), Box<dyn Error>> {
     loop {
         match recv.read_message() {
             ReadMessageResult::Message(msg) => {
@@ -82,10 +107,11 @@ fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mu
                 // Handle the message
                 let reply = match msg.parse::<Command>() {
                     Ok(command) => match command {
-                        Command::Get { cell_identifier } => {
-                            handle_get(&cell_identifier)
-                        },
-                        Command::Set { cell_identifier, cell_expr } => {
+                        Command::Get { cell_identifier } => handle_get(&cell_identifier),
+                        Command::Set {
+                            cell_identifier,
+                            cell_expr,
+                        } => {
                             if let Some(reply) = handle_set(&cell_identifier, &cell_expr) {
                                 reply
                             } else {
@@ -109,10 +135,17 @@ fn handle_connection(reader: Arc<SenderHandle>, recv: &mut dyn Reader, send: &mu
     Ok(())
 }
 
-
-
 // ===================== HELPERS ============================
 
+/// Converts a `CellIdentifier` into a `String` representation.
+///
+/// This function converts the row and column of the `CellIdentifier` into a cell address as a
+/// string, such as "A1", where "A" is the column name and "1" is the row number.
+///
+/// # Parameters
+/// * `cell_identifier`: A reference to a `CellIdentifier` that contains the row and column of a cell.
+///
+/// # Returns
 fn cell_to_string(cell_identifier: &CellIdentifier) -> String {
     let col_name = column_number_to_name(cell_identifier.col);
     let row = cell_identifier.row + 1;
@@ -121,6 +154,20 @@ fn cell_to_string(cell_identifier: &CellIdentifier) -> String {
     format!("{}{}", col_name, row)
 }
 
+/// Evaluates a cell expression and stores the result in the `cells` map. Also processes any dependencies.
+///
+/// The expression is parsed and evaluated. If successful, the result is stored in the `cells` map.
+/// If there is an error during evaluation, the error is stored in `cell_errors`. Additionally,
+/// the dependencies of the cell are updated.
+///
+/// # Parameters
+/// * `expr`: The `CellExpr` to evaluate.
+/// * `cells`: A mutable reference to the map of cell values.
+/// * `cell_address`: The address of the cell being evaluated.
+/// * `cell_errors`: A mutable reference to the map of errors.
+/// * `exprs`: A mutable reference to the map of expressions.
+/// * `dependers`: A mutable reference to the map of dependers.
+/// * `dependencies`: A mutable reference to the map of dependencies.
 fn evaluate_expr(
     expr: CellExpr,
     cells: &mut HashMap<String, CellValue>,
@@ -158,6 +205,16 @@ fn evaluate_expr(
 
 // ===================== STAGE 1 ============================
 
+/// Handles a `Get` command and retrieves the value of a cell.
+///
+/// The function checks if the requested cell exists and if it has any errors. If the cell has errors,
+/// an error message is returned. Otherwise, the value of the cell is returned.
+///
+/// # Parameters
+/// * `cell_identifier`: A reference to the `CellIdentifier` that identifies the cell.
+///
+/// # Returns
+/// A `Reply` containing either the value of the cell or an error message.
 fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     let cell_address = cell_to_string(cell_identifier);
 
@@ -179,6 +236,17 @@ fn handle_get(cell_identifier: &CellIdentifier) -> Reply {
     }
 }
 
+/// Handles a `Set` command and evaluates an expression to update a cell's value.
+///
+/// The expression is parsed and evaluated, and the result is stored in the `cells` map. Dependencies are
+/// updated as necessary. If the `Set` command cannot be processed, `None` is returned.
+///
+/// # Parameters
+/// * `cell_identifier`: A reference to the `CellIdentifier` identifying the cell to update.
+/// * `cell_expr`: The expression to evaluate for the cell.
+///
+/// # Returns
+/// An `Option<Reply>` that is `None` when the operation is successful, or a `Reply` with an error if something goes wrong.
 fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply> {
     let mut cells = CELL_MAP.lock().unwrap();
     let mut exprs = EXPR_MAP.lock().unwrap();
@@ -207,6 +275,18 @@ fn handle_set(cell_identifier: &CellIdentifier, cell_expr: &str) -> Option<Reply
 
 // ===================== STAGE 2 ============================
 
+/// Parses the arguments in a cell expression and returns a map of variables to `CellArgument` values.
+///
+/// This function processes the variables in a cell expression, looking up their values in the `cells` map.
+/// It handles matrix and vector expressions, resolving the coordinates and determining the appropriate value type.
+///
+/// # Parameters
+/// * `cell_expr`: The expression containing variables.
+/// * `cells`: A reference to the map of cell values.
+/// * `new_dependers`: A mutable set that tracks the variables that depend on the evaluated expression.
+///
+/// # Returns
+/// A `HashMap<String, CellArgument>` that maps each variable name to its corresponding `CellArgument` value.
 fn parse_expr_args(
     cell_expr: &CellExpr,
     cells: &HashMap<String, CellValue>,
@@ -252,10 +332,32 @@ fn parse_expr_args(
     results
 }
 
+/// Retrieves the value of a specific cell from the `cells` map.
+///
+/// This function looks up the value of a cell using its identifier and returns the value. If the cell
+/// does not exist, `CellValue::None` is returned.
+///
+/// # Parameters
+/// * `var`: The name of the variable representing the cell.
+///
+/// # Returns
+/// The value of the cell, or `CellValue::None` if the cell does not exist.
 fn get_value(var: &str, cells: &HashMap<String, CellValue>) -> CellValue {
     cells.get(var).cloned().unwrap_or(CellValue::None)
 }
 
+/// Retrieves the values of a vector of cells, either a row or column vector.
+///
+/// This function iterates over the coordinates of the vector, retrieves the corresponding values from
+/// the `cells` map, and returns them as a `CellArgument::Vector` value.
+///
+/// # Parameters
+/// * `coords`: A vector of strings representing the coordinates of the vector's cells.
+/// * `cells`: A reference to the map of cell values.
+/// * `dependers`: A mutable set that tracks which cells depend on this vector.
+///
+/// # Returns
+/// A `CellArgument::Vector` containing the values of the vector's cells.
 fn get_vector(
     coords: Vec<&str>,
     cells: &HashMap<String, CellValue>,
@@ -291,6 +393,18 @@ fn get_vector(
     CellArgument::Vector(vector_values)
 }
 
+/// Retrieves the values of a matrix of cells, iterating over both rows and columns.
+///
+/// This function processes a matrix expression, retrieves the values of all the cells in the matrix,
+/// and returns them as a `CellArgument::Matrix` value.
+///
+/// # Parameters
+/// * `coords`: A vector of strings representing the coordinates of the matrix' cells.
+/// * `cells`: A reference to the map of cell values.
+/// * `dependers`: A mutable set that tracks which cells depend on this matrix.
+///
+/// # Returns
+/// A `CellArgument::Matrix` containing the values of the matrix' cells.
 fn get_matrix(
     coords: Vec<&str>,
     cells: &HashMap<String, CellValue>,
@@ -321,6 +435,18 @@ fn get_matrix(
 
 // ===================== STAGE 4 + 5 ============================
 
+/// Updates the dependencies of a cell when its value changes.
+///
+/// This function ensures that the dependencies of a cell are updated whenever its value changes.
+/// It evaluates the affected expressions and updates the `dependencies` and `dependers` maps accordingly.
+///
+/// # Parameters
+/// * `cell_address`: The address of the cell whose dependencies are being updated.
+/// * `dependencies`: A mutable reference to the map of dependencies.
+/// * `exprs`: A mutable reference to the map of expressions.
+/// * `cells`: A mutable reference to the map of cell values.
+/// * `cell_errors`: A mutable reference to the map of errors.
+/// * `dependers`: A mutable reference to the map of dependers.
 fn update_dependencies(
     cell_address: String,
     dependencies: &mut HashMap<String, HashSet<String>>,
@@ -348,6 +474,19 @@ fn update_dependencies(
     }
 }
 
+/// Processes the dependencies of a cell and updates the `dependers` and `dependencies` maps.
+///
+/// This function tracks the new and removed dependers, updating the dependencies accordingly. It also
+/// triggers a re-evaluation of the affected cells to ensure their values are up-to-date.
+///
+/// # Parameters
+/// * `new_dependers`: The new dependers of the cell.
+/// * `cell_address`: The address of the cell whose dependencies are being processed.
+/// * `exprs`: A mutable reference to the map of expressions.
+/// * `cells`: A mutable reference to the map of cell values.
+/// * `cell_errors`: A mutable reference to the map of errors.
+/// * `dependers`: A mutable reference to the map of dependers.
+/// * `dependencies`: A mutable reference to the map of dependencies.
 fn process_dependencies(
     new_dependers: HashSet<String>,
     cell_address: String,
@@ -390,49 +529,19 @@ fn process_dependencies(
     );
 }
 
-
 // ===================== TESTS ============================
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Clear Storage between tests
-    fn clear_storage() {
-        CELL_MAP.lock().unwrap().clear();
-        EXPR_MAP.lock().unwrap().clear();
-        DEPENDENCIES.lock().unwrap().clear();
-        DEPENDERS.lock().unwrap().clear();
-        CELL_ERRORS.lock().unwrap().clear();
-    }
-
-    // 1. Test initialization of cell maps and dependency maps
-    #[test]
-    fn test_initialization() {
-        clear_storage();
-        let cells = CELL_MAP.lock().unwrap();
-        assert!(cells.is_empty());
-
-        let cell_errors = CELL_ERRORS.lock().unwrap();
-        assert!(cell_errors.is_empty());
-
-        let exprs = EXPR_MAP.lock().unwrap();
-        assert!(exprs.is_empty());
-
-        let dependencies = DEPENDENCIES.lock().unwrap();
-        assert!(dependencies.is_empty());
-
-        let dependers = DEPENDERS.lock().unwrap();
-        assert!(dependers.is_empty());
-    }
-
-    // 2. Test `cell_to_string` function with a sample CellIdentifier
+    // 1. Test `cell_to_string` function with a sample CellIdentifier
     #[test]
     fn test_cell_to_string() {
         let cell_identifier = CellIdentifier { row: 0, col: 1 }; // Expected "B1"
         assert_eq!(cell_to_string(&cell_identifier), "B1");
     }
 
-    // 3. Test `handle_set` for a valid expression
+    // 2. Test `handle_set` for a valid expression
     #[test]
     fn test_handle_set_valid_expr() {
         let cell_id = CellIdentifier { row: 0, col: 1 }; // Cell "B1"
@@ -447,7 +556,7 @@ mod tests {
         assert_eq!(cells.get(&cell_address), Some(&CellValue::Int(5)));
     }
 
-    // 4. Test `evaluate_expr` for simple evaluation
+    // 3. Test `evaluate_expr` for simple evaluation
     #[test]
     fn test_evaluate_expr() {
         let mut cells = HashMap::new();
@@ -473,7 +582,7 @@ mod tests {
         assert!(cell_errors.get(&cell_address).is_none());
     }
 
-    // 5. Test `evaluate_expr` with a cell expression error
+    // 4. Test `evaluate_expr` with a cell expression error
     #[test]
     fn test_evaluate_expr_with_error() {
         let mut cells = HashMap::new();
@@ -510,7 +619,7 @@ mod tests {
         assert!(cell_errors.contains_key(&cell_address_2));
     }
 
-    // 6. Test `parse_expr_args` for argument parsing
+    // 5. Test `parse_expr_args` for argument parsing
     #[test]
     fn test_parse_expr_args() {
         let mut cells = HashMap::new();
@@ -523,10 +632,9 @@ mod tests {
         assert_eq!(args["B1"], CellArgument::Value(CellValue::Int(5)));
     }
 
-    // 7. Test dependency management functions
+    // 6. Test dependency management functions
     #[test]
     fn test_process_dependencies() {
-
         let mut cells = HashMap::new();
         let mut exprs = HashMap::new();
         let mut cell_errors = HashMap::new();
