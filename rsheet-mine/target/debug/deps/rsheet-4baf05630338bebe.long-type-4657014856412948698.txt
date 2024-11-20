@@ -1,0 +1,1 @@
+Option<Box<(dyn for<'a> Fn(rhai::tokenizer::Token, rhai::types::position::Position, &'a rhai::tokenizer::TokenizeState) -> rhai::tokenizer::Token + 'static)>>

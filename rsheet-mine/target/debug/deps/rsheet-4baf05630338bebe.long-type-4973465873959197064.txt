@@ -1,0 +1,1 @@
+Box<(dyn for<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j> Fn(&'a mut rhai::eval::eval_context::EvalContext<'b, 'c, 'd, 'e, 'f, 'g>, &'h [rhai::api::custom_syntax::Expression<'i>], &'j rhai::types::dynamic::Dynamic) -> Result<rhai::types::dynamic::Dynamic, Box<rhai::types::error::EvalAltResult>> + 'static)>
