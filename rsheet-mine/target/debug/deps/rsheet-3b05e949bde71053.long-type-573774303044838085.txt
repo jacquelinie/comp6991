@@ -1,1 +1,0 @@
-(dyn for<'a, 'b, 'c, 'd, 'e, 'f, 'g> Fn(bool, rhai::types::var_def::VarDefInfo<'a>, rhai::eval::eval_context::EvalContext<'b, 'c, 'd, 'e, 'f, 'g>) -> Result<bool, Box<rhai::types::error::EvalAltResult>> + 'static)

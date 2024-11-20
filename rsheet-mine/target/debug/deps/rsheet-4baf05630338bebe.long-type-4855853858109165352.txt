@@ -1,1 +1,0 @@
-Box<(dyn for<'a, 'b, 'c> Fn(&'a [rhai::types::immutable_string::ImmutableString], &'b str, &'c mut rhai::types::dynamic::Dynamic) -> Result<Option<rhai::types::immutable_string::ImmutableString>, rhai::types::parse_error::ParseError> + 'static)>

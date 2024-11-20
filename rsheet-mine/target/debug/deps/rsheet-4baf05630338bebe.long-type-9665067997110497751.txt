@@ -1,1 +1,0 @@
-Option<Box<(dyn for<'a, 'b, 'c, 'd, 'e, 'f, 'g> Fn(&'a str, usize, rhai::eval::eval_context::EvalContext<'b, 'c, 'd, 'e, 'f, 'g>) -> Result<Option<rhai::types::dynamic::Dynamic>, Box<rhai::types::error::EvalAltResult>> + 'static)>>
