@@ -612,3 +612,16 @@ mod tests {
         ));
     }
 }
+
+
+// A: set A1 1
+// A: set B1 1
+// B: set A2 2
+// B: set B2 2
+// A: sleep 2000
+// A: set C1 sum(A1_B2)
+// B: sleep 4000
+// B: get C1
+// A: sleep 4000
+// A: set C2 sum(A1_B1) + sum(A2_B2)
+// A: get C2
